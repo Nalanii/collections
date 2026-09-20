@@ -74,7 +74,7 @@ function DeleteIcon() {
 }
 
 function emptyFormState() {
-  return { fields: {}, status: 'have', notes: '' }
+  return { fields: {}, originalFields: {}, status: 'have', notes: '' }
 }
 
 export function CollectionView({ collectionId, user, onBack }) {
@@ -94,6 +94,7 @@ export function CollectionView({ collectionId, user, onBack }) {
   const [focusToken, setFocusToken] = useState(0)
   const [deleteConfirmId, setDeleteConfirmId] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
+  const [deleteError, setDeleteError] = useState(null)
   const firstFieldRef = useRef(null)
 
   useEffect(() => {
@@ -170,6 +171,7 @@ export function CollectionView({ collectionId, user, onBack }) {
           item.fields?.[fieldDef.name] != null ? String(item.fields[fieldDef.name]) : '',
         ])
       ),
+      originalFields: item.fields ?? {},
       status: item.status,
       notes: item.notes ?? '',
     })
@@ -203,7 +205,11 @@ export function CollectionView({ collectionId, user, onBack }) {
     setSaving(true)
     try {
       if (editingItemId) {
-        await updateItem(editingItemId, { status: form.status, fields: trimmedFields, notes: trimmedNotes })
+        await updateItem(editingItemId, {
+          status: form.status,
+          fields: { ...form.originalFields, ...trimmedFields },
+          notes: trimmedNotes,
+        })
         setEditingItemId(null)
         setForm(emptyFormState())
         setMode('search')
@@ -235,13 +241,14 @@ export function CollectionView({ collectionId, user, onBack }) {
   }
 
   async function handleConfirmDelete(itemId) {
+    setDeleteError(null)
     setDeletingId(itemId)
     try {
       await deleteItem(itemId)
       setDeleteConfirmId(null)
     } catch (err) {
       console.error(err)
-      setItemsError('Could not delete item. Please try again.')
+      setDeleteError('Could not delete item. Please try again.')
     } finally {
       setDeletingId(null)
     }
@@ -439,6 +446,7 @@ export function CollectionView({ collectionId, user, onBack }) {
           </div>
 
           {itemsError && <p className="collection-view-error">{itemsError}</p>}
+          {deleteError && <p className="collection-view-error">{deleteError}</p>}
 
           {items !== null && !itemsError && tabItems.length === 0 && (
             <p className="collection-view-empty">
