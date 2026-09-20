@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import './App.css'
 import { Admin } from './components/Admin'
+import { Home } from './components/Home'
 import { SignIn } from './components/SignIn'
 import { useAuth } from './hooks/useAuth'
 import { signOutUser } from './services/auth'
@@ -40,16 +41,7 @@ function App() {
             onDone={() => setAdminCollectionId(undefined)}
           />
         ) : (
-          <>
-            <p>Your collections will show up here.</p>
-            <button
-              type="button"
-              className="new-collection-button"
-              onClick={() => setAdminCollectionId(null)}
-            >
-              + New collection
-            </button>
-          </>
+          <Home user={user} onCreateCollection={() => setAdminCollectionId(null)} />
         )}
       </main>
     </div>

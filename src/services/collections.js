@@ -1,11 +1,15 @@
 import {
   collection,
+  collectionGroup,
   deleteDoc,
   doc,
+  getDoc,
   onSnapshot,
+  query,
   serverTimestamp,
   setDoc,
   updateDoc,
+  where,
 } from 'firebase/firestore'
 import { db } from './firebase'
 
@@ -47,6 +51,7 @@ export async function createCollection(user, { name, emoji, fieldDefs }) {
   for (let attempt = 0; attempt <= MEMBER_WRITE_RETRIES; attempt += 1) {
     try {
       await setDoc(memberRef, {
+        uid: user.uid,
         role: 'owner',
         joinedAt: serverTimestamp(),
       })
@@ -73,6 +78,44 @@ export function updateCollection(collectionId, { name, emoji, fieldDefs }) {
 
 export function deleteCollection(collectionId) {
   return deleteDoc(doc(db, 'collections', collectionId))
+}
+
+// `callback` is invoked as `callback(collections, error)`. On a successful
+// snapshot, `collections` is an array of `{ id, ...collectionDoc, role }` for
+// every collection the user is a member of, and `error` is undefined. Member
+// docs are matched on their own `uid` field (not the doc ID) because a
+// collectionGroup query can only filter on document fields, not on the last
+// segment of each document's path. On a listener error (e.g.
+// `permission-denied`), `collections` is `[]` and `error` is the Firestore
+// error.
+export function subscribeToUserCollections(uid, callback) {
+  const membershipsQuery = query(collectionGroup(db, 'members'), where('uid', '==', uid))
+  return onSnapshot(
+    membershipsQuery,
+    async (snapshot) => {
+      try {
+        const entries = await Promise.all(
+          snapshot.docs.map(async (memberSnap) => {
+            const collectionSnap = await getDoc(memberSnap.ref.parent.parent)
+            if (!collectionSnap.exists()) {
+              return null
+            }
+            return {
+              id: collectionSnap.id,
+              ...collectionSnap.data(),
+              role: memberSnap.data().role,
+            }
+          })
+        )
+        callback(entries.filter((entry) => entry != null))
+      } catch (err) {
+        callback([], err)
+      }
+    },
+    (error) => {
+      callback([], error)
+    }
+  )
 }
 
 // `callback` is invoked as `callback(data, error)`. On a successful snapshot,

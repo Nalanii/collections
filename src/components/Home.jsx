@@ -1,0 +1,70 @@
+import { useEffect, useState } from 'react'
+import { subscribeToUserCollections } from '../services/collections'
+import './Home.css'
+
+export function Home({ user, onCreateCollection }) {
+  const [collections, setCollections] = useState(null)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    setError(null)
+    const unsubscribe = subscribeToUserCollections(user.uid, (data, err) => {
+      if (err) {
+        console.error(err)
+        setError('Could not load your collections. Please try again.')
+        return
+      }
+      setCollections(data)
+    })
+    return unsubscribe
+  }, [user.uid])
+
+  const loading = collections === null && !error
+
+  return (
+    <div className="home-screen">
+      {loading && <p className="home-loading">Loading your collections…</p>}
+
+      {error && <p className="home-error">{error}</p>}
+
+      {!loading && !error && collections.length === 0 && (
+        <div className="home-empty">
+          <p className="home-empty-title">No collections yet</p>
+          <p className="home-empty-text">
+            Create your first collection to start tracking what you have and what you want.
+          </p>
+        </div>
+      )}
+
+      {!loading && !error && collections.length > 0 && (
+        <div className="home-grid">
+          {collections.map((c) => (
+            <div key={c.id} className="collection-card">
+              <span className="collection-card-emoji">{c.emoji}</span>
+              <span className="collection-card-name">{c.name}</span>
+              {c.ownerId !== user.uid && (
+                <span className="collection-card-badge collection-card-badge--shared">
+                  Shared with me
+                </span>
+              )}
+              {c.role === 'viewer' && (
+                <span className="collection-card-badge collection-card-badge--readonly">
+                  Read-only
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <button
+        type="button"
+        className="home-fab"
+        onClick={onCreateCollection}
+        aria-label="Create a new collection"
+      >
+        +
+      </button>
+    </div>
+  )
+}

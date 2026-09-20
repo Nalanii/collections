@@ -57,6 +57,17 @@ service cloud.firestore {
         (isSignedIn() && request.auth.uid == uid && memberRole(collectionId) != 'owner');
     }
 
+    // The nested match above scopes reads/writes to one known collectionId
+    // and does not authorize a collectionGroup('members') query (Home
+    // screen's "my collections" lookup) -- Firestore only authorizes
+    // collection-group queries via a top-level `{path=**}` match. This lets
+    // a signed-in user list only their own membership docs across every
+    // collection; each doc's parent collection is then read under the
+    // isMember() rule above, using the membership this rule just proved.
+    match /{path=**}/members/{memberId} {
+      allow read: if isSignedIn() && resource.data.uid == request.auth.uid;
+    }
+
     match /collections/{collectionId}/invites/{email} {
       allow read: if isOwnerOrEditor(collectionId) || (isSignedIn() && request.auth.token.email == email);
       allow create, update: if isOwnerOrEditor(collectionId) && request.resource.data.role in ['editor', 'viewer'];

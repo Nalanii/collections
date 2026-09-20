@@ -1,0 +1,100 @@
+.home-screen {
+  position: relative;
+  min-height: calc(100vh - 8rem);
+  padding-bottom: 5rem;
+}
+
+.home-loading,
+.home-error {
+  margin-top: 2rem;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.home-error {
+  color: var(--color-primary-dark);
+}
+
+.home-empty {
+  margin-top: 3rem;
+  padding: 0 1rem;
+  text-align: center;
+}
+
+.home-empty-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.home-empty-text {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+.collection-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 1.25rem 0.75rem;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.collection-card-emoji {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.collection-card-name {
+  font-weight: 600;
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+
+.collection-card-badge {
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.collection-card-badge--shared {
+  background-color: rgba(124, 140, 248, 0.15);
+  color: var(--color-accent);
+}
+
+.collection-card-badge--readonly {
+  background-color: rgba(111, 113, 120, 0.15);
+  color: var(--color-text-muted);
+}
+
+.home-fab {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background-color: var(--color-primary);
+  color: #ffffff;
+  font-size: 1.75rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}

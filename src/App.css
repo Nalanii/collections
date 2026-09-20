@@ -40,16 +40,3 @@
 .app-shell--loading {
   background-color: var(--color-bg);
 }
-
-.new-collection-button {
-  margin-top: 1rem;
-  padding: 0.75rem 1.25rem;
-  min-height: 44px;
-  border: none;
-  border-radius: var(--radius-md);
-  background-color: var(--color-primary);
-  color: #ffffff;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-}

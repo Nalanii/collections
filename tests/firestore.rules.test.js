@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   assertFails,
   assertSucceeds,
@@ -24,19 +24,19 @@ async function seedFixtures() {
       .doc('col1')
       .collection('members')
       .doc('owner-uid')
-      .set({ role: 'owner' });
+      .set({ role: 'owner', uid: 'owner-uid' });
     await db
       .collection('collections')
       .doc('col1')
       .collection('members')
       .doc('editor-uid')
-      .set({ role: 'editor' });
+      .set({ role: 'editor', uid: 'editor-uid' });
     await db
       .collection('collections')
       .doc('col1')
       .collection('members')
       .doc('viewer-uid')
-      .set({ role: 'viewer' });
+      .set({ role: 'viewer', uid: 'viewer-uid' });
 
     await db
       .collection('collections')
@@ -561,6 +561,29 @@ describe('invite acceptance', () => {
         .doc('uninvited-uid')
         .set({ role: 'editor' })
     );
+  });
+});
+
+describe('collectionGroup members query (Home screen "my collections" lookup)', () => {
+  beforeEach_seed();
+
+  it('a member can list their own membership docs across all collections', async () => {
+    const db = testEnv.authenticatedContext('editor-uid').firestore();
+    const snapshot = await assertSucceeds(
+      db.collectionGroup('members').where('uid', '==', 'editor-uid').get()
+    );
+    expect(snapshot.size).toBe(1);
+    expect(snapshot.docs[0].ref.path).toBe('collections/col1/members/editor-uid');
+  });
+
+  it('cannot list another user\'s membership docs by filtering on their uid', async () => {
+    const db = testEnv.authenticatedContext('editor-uid').firestore();
+    await assertFails(db.collectionGroup('members').where('uid', '==', 'owner-uid').get());
+  });
+
+  it('an unauthenticated user cannot run the collectionGroup query', async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertFails(db.collectionGroup('members').where('uid', '==', 'owner-uid').get());
   });
 });
 
