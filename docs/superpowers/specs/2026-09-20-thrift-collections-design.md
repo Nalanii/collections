@@ -31,14 +31,14 @@ optionally be shared (read-only or read/write) with other people.
 - Archiving collections (stubbed as a future ticket — v1 only supports
   straight delete).
 - Dedicated "did you mean" UI beyond generous fuzzy filtering.
-- Custom app icon / branding (v1 uses simple, cute, modern, minimal system
-  styling — no icon design work).
+- Further custom app icon / branding work beyond the shipped logo and
+  palette (v1 uses simple, cute, modern, minimal system styling).
 
 ## Architecture
 
 - **Frontend:** React + Vite, custom mobile-first responsive CSS (no heavy
   component framework). Visual language: simple, cute, modern, minimal —
-  soft/friendly color palette, no custom icon/branding work in v1.
+  soft/friendly color palette, with the shipped logo and brand palette.
 - **Hosting:** Firebase Hosting.
 - **Auth:** Firebase Auth, Google provider only for v1.
 - **Data:** Firestore.
@@ -158,7 +158,8 @@ shippable and buildable on the last:
 
 ## Open questions for later (not blocking v1)
 
-- Custom app icon / branding beyond the simple/cute/minimal default styling.
+- Further custom app icon / branding work beyond the shipped logo, palette,
+  and simple/cute/minimal default styling.
 - Whether to eventually wrap the PWA natively (e.g. Capacitor) for app-store
   distribution — the service-layer separation in ticket 1 is the only v1
   concession toward this.
