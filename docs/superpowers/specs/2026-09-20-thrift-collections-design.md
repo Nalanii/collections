@@ -20,18 +20,25 @@ optionally be shared (read-only or read/write) with other people.
 - Per-collection sharing with accept/leave and role-based (viewer/editor)
   permissions.
 - Hosted as close to 100% on Firebase as possible.
+- Installable as a PWA in v1, with the architecture kept friendly to wrapping
+  as a native app later.
 
 ## Non-goals (v1)
 
 - Offline support (stubbed as a future ticket).
 - Non-Google auth (SimpleLogin, stubbed as a future ticket).
 - Ownership transfer for shared collections (stubbed as a future ticket).
+- Archiving collections (stubbed as a future ticket — v1 only supports
+  straight delete).
 - Dedicated "did you mean" UI beyond generous fuzzy filtering.
+- Custom app icon / branding (v1 uses simple, cute, modern, minimal system
+  styling — no icon design work).
 
 ## Architecture
 
 - **Frontend:** React + Vite, custom mobile-first responsive CSS (no heavy
-  component framework).
+  component framework). Visual language: simple, cute, modern, minimal —
+  soft/friendly color palette, no custom icon/branding work in v1.
 - **Hosting:** Firebase Hosting.
 - **Auth:** Firebase Auth, Google provider only for v1.
 - **Data:** Firestore.
@@ -39,6 +46,13 @@ optionally be shared (read-only or read/write) with other people.
   invites are plain documents, not emails).
 - **Search:** Fuse.js, client-side, run against the full collection (loaded
   entirely on collection open).
+- **PWA:** Web app manifest + service worker (static asset caching only, no
+  offline data sync) so the app is installable to a phone home screen in v1.
+- **Future native-app path:** all Firebase calls (auth, Firestore reads/
+  writes) live in a thin service layer (e.g. `src/services/`) rather than
+  scattered through components, so the app can be wrapped later (e.g. with
+  Capacitor) without a rewrite. No native-specific code in v1 — this is
+  purely a "don't box ourselves in" constraint on where Firebase logic lives.
 
 ## Data model (Firestore)
 
@@ -91,7 +105,10 @@ the target `collectionId`, checking role for write access. Home screen finds
    from the collection's field defs plus a Have/ISO radio and a notes field.
    Ctrl+Enter saves the entry, clears the form, and refocuses the first input
    for fast repeated entry. Read-only members never see add mode or edit
-   affordances, and see a persistent read-only banner/icon.
+   affordances, and see a persistent read-only banner/icon. **Have vs. ISO
+   entries are visually distinguished by color** (not just a text/icon
+   label) in the list, since scanning at a glance is the core use case — v1
+   requirement, not a stub.
 
 ## Testing approach
 
@@ -106,7 +123,9 @@ This spec is implemented as a sequence of GitHub issues, each independently
 shippable and buildable on the last:
 
 1. **Project scaffold** — Vite + React app, Firebase project wiring (Hosting,
-   Auth, Firestore), deploy pipeline, base mobile-first layout shell.
+   Auth, Firestore), deploy pipeline, base mobile-first layout shell, PWA
+   manifest + service worker (installable, static-asset caching only), a
+   Firebase service layer (`src/services/`) for auth/Firestore calls.
 2. **Google auth** — sign-in/sign-out, `users/{uid}` profile doc on first
    login, route guarding.
 3. **Firestore security rules + rules tests** — full rule set for
@@ -117,7 +136,8 @@ shippable and buildable on the last:
 5. **Home screen** — collection cards grid, shared/read-only badges, empty
    state, Admin entry point.
 6. **Collection view: search mode** — load full item list on open, real-time
-   Fuse.js fuzzy filter, clear button, All/ISO sub-tabs.
+   Fuse.js fuzzy filter, clear button, All/ISO sub-tabs, distinct coloring
+   for Have vs. ISO entries in the list.
 7. **Collection view: add mode** — dynamic form from field defs, Have/ISO
    radio, notes, Ctrl+Enter rapid-entry flow, edit/delete existing items.
 8. **Sharing: invites** — Admin UI to invite by email + role, pending-invites
@@ -133,9 +153,12 @@ shippable and buildable on the last:
     ownership to another member.
 13. **(Stub, future) SimpleLogin auth** — add SimpleLogin as a second auth
     provider alongside Google.
+14. **(Stub, future) Archive collections** — archive instead of (or in
+    addition to) straight delete, with an archived-collections view.
 
 ## Open questions for later (not blocking v1)
 
-- App icon / branding.
-- Whether to add a PWA manifest for "Add to Home Screen" install (not
-  required for v1, but low-cost — worth a look during ticket 1).
+- Custom app icon / branding beyond the simple/cute/minimal default styling.
+- Whether to eventually wrap the PWA natively (e.g. Capacitor) for app-store
+  distribution — the service-layer separation in ticket 1 is the only v1
+  concession toward this.
