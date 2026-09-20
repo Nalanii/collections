@@ -18,7 +18,7 @@ function withRowKeys(fieldDefs) {
   return fieldDefs.map((fieldDef) => ({ ...fieldDef, _key: nextRowKey++ }))
 }
 
-export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel }) {
+export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel, submitting = false }) {
   const [name, setName] = useState(initialValues.name)
   const [emoji, setEmoji] = useState(initialValues.emoji)
   const [fieldDefs, setFieldDefs] = useState(() => withRowKeys(initialValues.fieldDefs))
@@ -68,6 +68,8 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel 
       })),
     })
   }
+
+  const submittingLabel = submitLabel.toLowerCase().includes('create') ? 'Creating…' : 'Saving…'
 
   const showNameError = nameTouched && trimmedName === ''
   const showEmojiError = emojiTouched && emoji === ''
@@ -161,8 +163,12 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel 
         <button type="button" className="collection-form-cancel-button" onClick={onCancel}>
           Cancel
         </button>
-        <button type="submit" className="collection-form-submit-button" disabled={!isValid}>
-          {submitLabel}
+        <button
+          type="submit"
+          className="collection-form-submit-button"
+          disabled={!isValid || submitting}
+        >
+          {submitting ? submittingLabel : submitLabel}
         </button>
       </div>
     </form>

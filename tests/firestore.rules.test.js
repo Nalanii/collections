@@ -503,6 +503,33 @@ describe('owner bootstrap (self-create first members doc)', () => {
     );
     await assertSucceeds(memberRef.set({ role: 'owner' }));
   });
+
+  it('the same create attempted as a single writeBatch (both docs, nothing pre-seeded) fails', async () => {
+    // Companion negative test to the one above: proves the reasoning in that
+    // test's comment (and in src/services/collections.js's createCollection
+    // comment) by actually exercising the batched-write shape the plan
+    // originally called for. The members/{uid} owner-bootstrap rule's
+    // get(collections/{id}).data.ownerId never sees the collections doc set
+    // earlier in the SAME batch, because rules' get()/exists() calls only
+    // see already-committed state -- so committing both docs in one
+    // writeBatch from unseeded state must fail. If someone reintroduces a
+    // batch/transaction in createCollection, this test catches it even
+    // though the sequential-setDoc happy-path test above would still pass.
+    const db = testEnv.authenticatedContext('batch-owner-uid').firestore();
+    const collectionRef = db.collection('collections').doc('col-batch');
+    const memberRef = collectionRef.collection('members').doc('batch-owner-uid');
+
+    const batch = db.batch();
+    batch.set(collectionRef, {
+      name: 'Batched Collection',
+      emoji: '🧵',
+      ownerId: 'batch-owner-uid',
+      fieldDefs: [],
+    });
+    batch.set(memberRef, { role: 'owner' });
+
+    await assertFails(batch.commit());
+  });
 });
 
 describe('invite acceptance', () => {

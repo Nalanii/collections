@@ -16,8 +16,10 @@ export function Admin({ user, collectionId, onDone }) {
   const [collection, setCollection] = useState(null)
   const [loading, setLoading] = useState(isEditMode)
   const [error, setError] = useState(null)
+  const [loadError, setLoadError] = useState(null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     if (!isEditMode) {
@@ -27,7 +29,14 @@ export function Admin({ user, collectionId, onDone }) {
     }
 
     setLoading(true)
-    const unsubscribe = subscribeToCollection(collectionId, (data) => {
+    setLoadError(null)
+    const unsubscribe = subscribeToCollection(collectionId, (data, err) => {
+      if (err) {
+        console.error(err)
+        setLoading(false)
+        setLoadError('Could not load this collection. Please try again.')
+        return
+      }
       setCollection(data)
       setLoading(false)
     })
@@ -36,6 +45,7 @@ export function Admin({ user, collectionId, onDone }) {
 
   async function handleSubmit(values) {
     setError(null)
+    setSubmitting(true)
     try {
       if (isEditMode) {
         await updateCollection(collectionId, values)
@@ -43,10 +53,12 @@ export function Admin({ user, collectionId, onDone }) {
         await createCollection(user, values)
       }
       onDone()
-    } catch {
+    } catch (err) {
+      console.error(err)
       setError(
         isEditMode ? 'Could not save changes. Please try again.' : 'Could not create collection. Please try again.'
       )
+      setSubmitting(false)
     }
   }
 
@@ -56,7 +68,8 @@ export function Admin({ user, collectionId, onDone }) {
     try {
       await deleteCollection(collectionId)
       onDone()
-    } catch {
+    } catch (err) {
+      console.error(err)
       setError('Could not delete collection. Please try again.')
       setDeleting(false)
       setConfirmingDelete(false)
@@ -67,6 +80,17 @@ export function Admin({ user, collectionId, onDone }) {
     return (
       <div className="admin-screen">
         <p className="admin-loading">Loading collection…</p>
+      </div>
+    )
+  }
+
+  if (isEditMode && loadError) {
+    return (
+      <div className="admin-screen">
+        <p className="admin-error">{loadError}</p>
+        <button type="button" className="admin-back-button" onClick={onDone}>
+          Back
+        </button>
       </div>
     )
   }
@@ -83,7 +107,7 @@ export function Admin({ user, collectionId, onDone }) {
   }
 
   const initialValues = isEditMode
-    ? { name: collection.name, emoji: collection.emoji, fieldDefs: collection.fieldDefs }
+    ? { name: collection.name, emoji: collection.emoji, fieldDefs: collection.fieldDefs ?? [] }
     : EMPTY_VALUES
 
   return (
@@ -95,6 +119,7 @@ export function Admin({ user, collectionId, onDone }) {
         onSubmit={handleSubmit}
         onCancel={onDone}
         submitLabel={isEditMode ? 'Save changes' : 'Create collection'}
+        submitting={submitting}
       />
 
       {error && <p className="admin-error">{error}</p>}
