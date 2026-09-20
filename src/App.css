@@ -7,6 +7,10 @@
 }
 
 .app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
   padding: 1rem;
   background-color: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
@@ -18,7 +22,21 @@
   color: var(--color-primary-dark);
 }
 
+.sign-out-button {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
 .app-main {
   flex: 1;
   padding: 1rem;
+}
+
+.app-shell--loading {
+  background-color: var(--color-bg);
 }
