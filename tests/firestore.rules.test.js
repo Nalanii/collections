@@ -193,6 +193,13 @@ describe('editor (read/write items, no collection delete)', () => {
     await assertSucceeds(db.collection('collections').doc('col1').get());
   });
 
+  it('can update collections/col1', async () => {
+    const db = testEnv.authenticatedContext('editor-uid').firestore();
+    await assertSucceeds(
+      db.collection('collections').doc('col1').update({ name: 'Updated by editor' })
+    );
+  });
+
   it('cannot delete collections/col1', async () => {
     const db = testEnv.authenticatedContext('editor-uid').firestore();
     await assertFails(db.collection('collections').doc('col1').delete());
