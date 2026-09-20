@@ -6,6 +6,21 @@ import './CollectionView.css'
 
 const EMPTY_FIELD_DEFS = []
 
+function BackChevronIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+      <path
+        d="M10 3.5L5.5 8l4.5 4.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 export function CollectionView({ collectionId, onBack }) {
   const [collectionData, setCollectionData] = useState(null)
   const [collectionLoaded, setCollectionLoaded] = useState(false)
@@ -64,7 +79,7 @@ export function CollectionView({ collectionId, onBack }) {
       <div className="collection-view-screen">
         <p className="collection-view-error">{collectionError}</p>
         <button type="button" className="collection-view-back-button" onClick={onBack}>
-          ‹ Back
+          <BackChevronIcon /> Back
         </button>
       </div>
     )
@@ -78,7 +93,7 @@ export function CollectionView({ collectionId, onBack }) {
       <div className="collection-view-screen">
         <p className="collection-view-error">This collection could not be found.</p>
         <button type="button" className="collection-view-back-button" onClick={onBack}>
-          ‹ Back
+          <BackChevronIcon /> Back
         </button>
       </div>
     )
@@ -93,7 +108,7 @@ export function CollectionView({ collectionId, onBack }) {
           onClick={onBack}
           aria-label="Back to collections"
         >
-          ‹
+          <BackChevronIcon />
         </button>
         <span className="collection-view-emoji">{collectionData.emoji}</span>
         <span className="collection-view-name">{collectionData.name}</span>

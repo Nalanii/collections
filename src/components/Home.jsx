@@ -75,7 +75,15 @@ export function Home({ user, onCreateCollection, onOpenCollection = () => {} }) 
         onClick={onCreateCollection}
         aria-label="Create a new collection"
       >
-        +
+        <svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true">
+          <path
+            d="M8 2v12M2 8h12"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinecap="round"
+          />
+        </svg>
       </button>
     </div>
   )
