@@ -1,5 +1,5 @@
-const CACHE_NAME = 'collections-static-v1'
-const PRECACHE_URLS = ['/', '/index.html', '/manifest.json', '/icon.svg']
+const CACHE_NAME = 'collections-static-v2'
+const PRECACHE_URLS = ['/', '/index.html', '/manifest.json', '/favicon.ico', '/logo-192.png', '/logo-512.png']
 
 self.addEventListener('install', (event) => {
   self.skipWaiting()

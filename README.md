@@ -1,4 +1,4 @@
-# Thrift Collections
+# Collections
 
 A mobile-first, personal collection tracker: define collections (DVDs, vinyl,
 whatever), log what you Have vs. what's on your wishlist, and search fast so

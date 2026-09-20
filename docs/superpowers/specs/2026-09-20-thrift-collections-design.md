@@ -1,4 +1,4 @@
-# Thrift Collections — Design Spec
+# Collections — Design Spec
 
 **Date:** 2026-09-20
 **Status:** Approved for ticket breakdown

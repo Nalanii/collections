@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { signInWithGoogle } from '../services/auth'
+import logo from '../assets/logo.png'
 import './SignIn.css'
 
 export function SignIn() {
@@ -20,7 +21,8 @@ export function SignIn() {
 
   return (
     <div className="sign-in-screen">
-      <h1 className="sign-in-title">Thrift Collections</h1>
+      <img className="sign-in-logo" src={logo} alt="" width="96" height="96" />
+      <h1 className="sign-in-title">Collections</h1>
       <p className="sign-in-subtitle">
         Track what you have and what you're hunting for.
       </p>

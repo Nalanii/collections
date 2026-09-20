@@ -21,7 +21,7 @@ function App() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <h1>Thrift Collections</h1>
+        <h1>Collections</h1>
         <button type="button" className="sign-out-button" onClick={signOutUser}>
           Sign out
         </button>
