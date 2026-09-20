@@ -2,8 +2,57 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function memberDoc(collectionId) {
+      return get(/databases/$(database)/documents/collections/$(collectionId)/members/$(request.auth.uid));
+    }
+
+    function isMember(collectionId) {
+      return isSignedIn() && exists(/databases/$(database)/documents/collections/$(collectionId)/members/$(request.auth.uid));
+    }
+
+    function memberRole(collectionId) {
+      return memberDoc(collectionId).data.role;
+    }
+
+    function isOwner(collectionId) {
+      return isMember(collectionId) && memberRole(collectionId) == 'owner';
+    }
+
+    function isOwnerOrEditor(collectionId) {
+      return isMember(collectionId) && memberRole(collectionId) in ['owner', 'editor'];
+    }
+
     match /users/{uid} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    match /collections/{collectionId} {
+      allow read: if isMember(collectionId);
+      allow create: if isSignedIn();
+      allow update: if isMember(collectionId);
+      allow delete: if isOwner(collectionId);
+    }
+
+    match /collections/{collectionId}/members/{uid} {
+      allow read: if isMember(collectionId);
+      allow create, update: if isOwner(collectionId);
+      allow delete: if isOwner(collectionId) || (isSignedIn() && request.auth.uid == uid);
+    }
+
+    match /collections/{collectionId}/invites/{email} {
+      allow read: if isOwnerOrEditor(collectionId) || (isSignedIn() && request.auth.token.email == email);
+      allow create, update: if isOwnerOrEditor(collectionId);
+      allow delete: if isOwnerOrEditor(collectionId) || (isSignedIn() && request.auth.token.email == email);
+    }
+
+    match /items/{itemId} {
+      allow read: if isMember(resource.data.collectionId);
+      allow create: if isOwnerOrEditor(request.resource.data.collectionId);
+      allow update, delete: if isOwnerOrEditor(resource.data.collectionId);
     }
 
     match /{document=**} {
