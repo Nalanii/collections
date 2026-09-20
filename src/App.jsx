@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import './App.css'
 import { Admin } from './components/Admin'
+import { CollectionView } from './components/CollectionView'
 import { Home } from './components/Home'
 import { SignIn } from './components/SignIn'
 import { useAuth } from './hooks/useAuth'
@@ -9,6 +10,7 @@ import { signOutUser } from './services/auth'
 function App() {
   const { user, initializing } = useAuth()
   const [adminCollectionId, setAdminCollectionId] = useState(undefined)
+  const [openCollectionId, setOpenCollectionId] = useState(null)
 
   if (initializing) {
     return <div className="app-shell app-shell--loading" />
@@ -23,6 +25,35 @@ function App() {
   }
 
   const showAdmin = adminCollectionId !== undefined
+  const showCollectionView = !showAdmin && openCollectionId !== null
+
+  let content
+  if (showAdmin) {
+    content = (
+      <Admin
+        key={adminCollectionId ?? 'new'}
+        user={user}
+        collectionId={adminCollectionId}
+        onDone={() => setAdminCollectionId(undefined)}
+      />
+    )
+  } else if (showCollectionView) {
+    content = (
+      <CollectionView
+        key={openCollectionId}
+        collectionId={openCollectionId}
+        onBack={() => setOpenCollectionId(null)}
+      />
+    )
+  } else {
+    content = (
+      <Home
+        user={user}
+        onCreateCollection={() => setAdminCollectionId(null)}
+        onOpenCollection={(collectionId) => setOpenCollectionId(collectionId)}
+      />
+    )
+  }
 
   return (
     <div className="app-shell">
@@ -32,18 +63,7 @@ function App() {
           Sign out
         </button>
       </header>
-      <main className="app-main">
-        {showAdmin ? (
-          <Admin
-            key={adminCollectionId ?? 'new'}
-            user={user}
-            collectionId={adminCollectionId}
-            onDone={() => setAdminCollectionId(undefined)}
-          />
-        ) : (
-          <Home user={user} onCreateCollection={() => setAdminCollectionId(null)} />
-        )}
-      </main>
+      <main className="app-main">{content}</main>
     </div>
   )
 }

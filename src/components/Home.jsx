@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { subscribeToUserCollections } from '../services/collections'
 import './Home.css'
 
-export function Home({ user, onCreateCollection }) {
+export function Home({ user, onCreateCollection, onOpenCollection }) {
   const [collections, setCollections] = useState(null)
   const [error, setError] = useState(null)
 
@@ -39,7 +39,19 @@ export function Home({ user, onCreateCollection }) {
       {!loading && !error && collections.length > 0 && (
         <div className="home-grid">
           {collections.map((c) => (
-            <div key={c.id} className="collection-card">
+            <div
+              key={c.id}
+              className="collection-card"
+              role="button"
+              tabIndex={0}
+              onClick={() => onOpenCollection(c.id)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  onOpenCollection(c.id)
+                }
+              }}
+            >
               <span className="collection-card-emoji">{c.emoji}</span>
               <span className="collection-card-name">{c.name}</span>
               {c.ownerId !== user.uid && (
