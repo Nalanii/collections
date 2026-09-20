@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { subscribeToUserCollections } from '../services/collections'
 import './Home.css'
 
-export function Home({ user, onCreateCollection, onOpenCollection }) {
+export function Home({ user, onCreateCollection, onOpenCollection = () => {} }) {
   const [collections, setCollections] = useState(null)
   const [error, setError] = useState(null)
 

@@ -55,4 +55,20 @@ describe('searchItems', () => {
     const result = searchItems(items, fieldDefs, 'zzzzzzzzzzzzzzzzzzzz')
     expect(result).toEqual([])
   })
+
+  it('matches a field whose name contains a literal dot', () => {
+    const dottedFieldDefs = [...fieldDefs, { name: 'Cat. No.', type: 'text' }]
+    const dottedItems = [
+      ...items,
+      {
+        id: '4',
+        status: 'have',
+        notes: '',
+        fields: { Title: 'Kind of Blue', Artist: 'Miles Davis', 'Cat. No.': 'AB-1234' },
+      },
+    ]
+
+    const result = searchItems(dottedItems, dottedFieldDefs, 'AB-1234')
+    expect(result.map((item) => item.id)).toContain('4')
+  })
 })

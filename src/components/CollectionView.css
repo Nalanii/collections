@@ -119,37 +119,37 @@
   list-style: none;
 }
 
-.item-row {
+.collection-view-item-row {
   padding: 0.75rem 0.9rem;
   border-radius: var(--radius-md);
   border-left: 4px solid transparent;
   background-color: var(--color-surface);
 }
 
-.item-row--have {
+.collection-view-item-row--have {
   border-left-color: var(--color-accent-green);
   background-color: rgba(56, 126, 63, 0.08);
 }
 
-.item-row--iso {
+.collection-view-item-row--iso {
   border-left-color: var(--color-accent-purple);
   background-color: rgba(73, 50, 107, 0.08);
 }
 
-.item-row-main {
+.collection-view-item-row-main {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 0.75rem;
 }
 
-.item-row-fields {
+.collection-view-item-row-fields {
   font-weight: 600;
   color: var(--color-text);
   overflow-wrap: anywhere;
 }
 
-.item-row-status {
+.collection-view-item-row-status {
   flex-shrink: 0;
   font-size: 0.75rem;
   font-weight: 700;
@@ -157,15 +157,15 @@
   letter-spacing: 0.03em;
 }
 
-.item-row--have .item-row-status {
+.collection-view-item-row--have .collection-view-item-row-status {
   color: var(--color-accent-green);
 }
 
-.item-row--iso .item-row-status {
+.collection-view-item-row--iso .collection-view-item-row-status {
   color: var(--color-accent-purple);
 }
 
-.item-row-notes {
+.collection-view-item-row-notes {
   margin: 0.3rem 0 0;
   color: var(--color-text-muted);
   font-size: 0.85rem;

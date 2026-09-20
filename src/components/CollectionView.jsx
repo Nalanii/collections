@@ -16,6 +16,7 @@ export function CollectionView({ collectionId, onBack }) {
   const [activeTab, setActiveTab] = useState('all')
 
   useEffect(() => {
+    setCollectionData(null)
     setCollectionError(null)
     setCollectionLoaded(false)
     const unsubscribe = subscribeToCollection(collectionId, (data, err) => {
@@ -31,6 +32,7 @@ export function CollectionView({ collectionId, onBack }) {
   }, [collectionId])
 
   useEffect(() => {
+    setItems(null)
     setItemsError(null)
     const unsubscribe = subscribeToItems(collectionId, (data, err) => {
       if (err) {
@@ -159,12 +161,17 @@ export function CollectionView({ collectionId, onBack }) {
               .filter((value) => value !== undefined && value !== null && value !== '')
               .join(' · ')
             return (
-              <li key={item.id} className={`item-row item-row--${item.status}`}>
-                <div className="item-row-main">
-                  <span className="item-row-fields">{fieldsSummary}</span>
-                  <span className="item-row-status">{item.status === 'have' ? 'Have' : 'ISO'}</span>
+              <li
+                key={item.id}
+                className={`collection-view-item-row collection-view-item-row--${item.status}`}
+              >
+                <div className="collection-view-item-row-main">
+                  <span className="collection-view-item-row-fields">{fieldsSummary}</span>
+                  <span className="collection-view-item-row-status">
+                    {item.status === 'have' ? 'Have' : 'ISO'}
+                  </span>
                 </div>
-                {item.notes && <p className="item-row-notes">{item.notes}</p>}
+                {item.notes && <p className="collection-view-item-row-notes">{item.notes}</p>}
               </li>
             )
           })}

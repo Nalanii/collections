@@ -17,7 +17,7 @@ export function searchItems(items, fieldDefs, query) {
     return items
   }
 
-  const keys = [...fieldDefs.map((fieldDef) => `fields.${fieldDef.name}`), 'notes']
+  const keys = [...fieldDefs.map((fieldDef) => ['fields', fieldDef.name]), 'notes']
   const fuse = new Fuse(items, { ...FUSE_OPTIONS, keys })
   return fuse.search(trimmed).map((result) => result.item)
 }
