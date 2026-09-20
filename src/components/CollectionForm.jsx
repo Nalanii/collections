@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import './CollectionForm.css'
 
 const EMOJI_OPTIONS = [
@@ -25,6 +25,7 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
   const [nameTouched, setNameTouched] = useState(false)
   const [emojiTouched, setEmojiTouched] = useState(false)
   const [fieldsTouched, setFieldsTouched] = useState(false)
+  const lastAddedKeyRef = useRef(null)
 
   const trimmedName = name.trim()
   const validFieldDefs = fieldDefs.filter((fieldDef) => fieldDef.name.trim() !== '')
@@ -43,7 +44,9 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
   }
 
   function handleAddField() {
-    setFieldDefs((rows) => [...rows, { _key: nextRowKey++, name: '', type: 'text' }])
+    const key = nextRowKey++
+    lastAddedKeyRef.current = key
+    setFieldDefs((rows) => [...rows, { _key: key, name: '', type: 'text' }])
   }
 
   function handleRemoveField(key) {
@@ -127,6 +130,12 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
                 onBlur={() => setFieldsTouched(true)}
                 placeholder="Field name"
                 aria-label="Field name"
+                ref={(node) => {
+                  if (node && lastAddedKeyRef.current === row._key) {
+                    node.focus()
+                    lastAddedKeyRef.current = null
+                  }
+                }}
               />
               <select
                 className="collection-form-select"
@@ -146,7 +155,14 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
                 onClick={() => handleRemoveField(row._key)}
                 aria-label="Remove field"
               >
-                ×
+                <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                  <path
+                    d="M3.5 3.5l9 9m0-9l-9 9"
+                    stroke="currentColor"
+                    strokeWidth="1.75"
+                    strokeLinecap="round"
+                  />
+                </svg>
               </button>
             </div>
           ))}
