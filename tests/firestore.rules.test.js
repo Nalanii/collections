@@ -15,6 +15,10 @@ async function seedFixtures() {
 
     await db.collection('collections').doc('col1').set({ ownerId: 'owner-uid' });
 
+    // A second collection with no members doc yet, used to test the
+    // owner-bootstrap self-create path in isolation.
+    await db.collection('collections').doc('col-bootstrap').set({ ownerId: 'bootstrap-owner-uid' });
+
     await db
       .collection('collections')
       .doc('col1')
@@ -183,6 +187,20 @@ describe('owner (full access)', () => {
     const db = testEnv.authenticatedContext('owner-uid').firestore();
     await assertSucceeds(db.collection('items').doc('item1').delete());
   });
+
+  it('cannot delete their own members/owner-uid doc (cannot leave)', async () => {
+    const db = testEnv.authenticatedContext('owner-uid').firestore();
+    await assertFails(
+      db.collection('collections').doc('col1').collection('members').doc('owner-uid').delete()
+    );
+  });
+
+  it('cannot change an item collectionId on update (immutable)', async () => {
+    const db = testEnv.authenticatedContext('owner-uid').firestore();
+    await assertFails(
+      db.collection('items').doc('item1').update({ collectionId: 'other-collection' })
+    );
+  });
 });
 
 describe('editor (read/write items, no collection delete)', () => {
@@ -276,6 +294,13 @@ describe('editor (read/write items, no collection delete)', () => {
     const db = testEnv.authenticatedContext('editor-uid').firestore();
     await assertSucceeds(db.collection('items').doc('item1').delete());
   });
+
+  it('cannot change ownerId when updating collections/col1', async () => {
+    const db = testEnv.authenticatedContext('editor-uid').firestore();
+    await assertFails(
+      db.collection('collections').doc('col1').update({ ownerId: 'editor-uid' })
+    );
+  });
 });
 
 describe('viewer (read-only)', () => {
@@ -348,6 +373,18 @@ describe('viewer (read-only)', () => {
       db.collection('collections').doc('col1').collection('members').doc('viewer-uid').delete()
     );
   });
+
+  it('can query items with a where(collectionId == col1) filter', async () => {
+    const db = testEnv.authenticatedContext('viewer-uid').firestore();
+    await assertSucceeds(
+      db.collection('items').where('collectionId', '==', 'col1').get()
+    );
+  });
+
+  it('cannot read an unfiltered items collection listing', async () => {
+    const db = testEnv.authenticatedContext('viewer-uid').firestore();
+    await assertFails(db.collection('items').get());
+  });
 });
 
 describe('non-member (denied entirely)', () => {
@@ -409,6 +446,66 @@ describe('non-member (denied entirely)', () => {
         .collection('invites')
         .doc('invited@example.com')
         .delete()
+    );
+  });
+});
+
+describe('owner bootstrap (self-create first members doc)', () => {
+  beforeEach_seed();
+
+  it('the true owner can bootstrap their own members doc when none exists yet', async () => {
+    const db = testEnv.authenticatedContext('bootstrap-owner-uid').firestore();
+    await assertSucceeds(
+      db
+        .collection('collections')
+        .doc('col-bootstrap')
+        .collection('members')
+        .doc('bootstrap-owner-uid')
+        .set({ role: 'owner' })
+    );
+  });
+
+  it('a non-owner cannot bootstrap themselves as owner even when no members doc exists', async () => {
+    const db = testEnv.authenticatedContext('not-the-owner-uid').firestore();
+    await assertFails(
+      db
+        .collection('collections')
+        .doc('col-bootstrap')
+        .collection('members')
+        .doc('not-the-owner-uid')
+        .set({ role: 'owner' })
+    );
+  });
+});
+
+describe('invite acceptance', () => {
+  beforeEach_seed();
+
+  it('an invited user can create their own members doc with the invited role', async () => {
+    const db = testEnv
+      .authenticatedContext('invitee-uid', { email: 'invited@example.com' })
+      .firestore();
+    await assertSucceeds(
+      db
+        .collection('collections')
+        .doc('col1')
+        .collection('members')
+        .doc('invitee-uid')
+        .set({ role: 'editor' })
+    );
+  });
+
+  it('a user with no matching invite cannot create their own members doc', async () => {
+    const db = testEnv
+      .authenticatedContext('uninvited-uid', { email: 'uninvited@example.com' })
+      .firestore();
+    await assertFails(
+      db
+        .collection('collections')
+        .doc('col1')
+        .collection('members')
+        .doc('uninvited-uid')
+        .set({ role: 'editor' })
     );
   });
 });

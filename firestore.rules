@@ -32,26 +32,34 @@ service cloud.firestore {
 
     match /collections/{collectionId} {
       allow read: if isMember(collectionId);
-      allow create: if isSignedIn();
-      allow update: if isOwnerOrEditor(collectionId);
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isOwnerOrEditor(collectionId)
+        && request.resource.data.ownerId == resource.data.ownerId;
       allow delete: if isOwner(collectionId);
     }
 
     match /collections/{collectionId}/members/{uid} {
       allow read: if isMember(collectionId);
-      allow create: if isOwner(collectionId) ||
+      allow create: if (isOwner(collectionId)
+          && request.resource.data.role in ['owner', 'editor', 'viewer']) ||
         (isSignedIn()
          && !isMember(collectionId)
          && request.auth.uid == uid
          && request.resource.data.role == 'owner'
-         && get(/databases/$(database)/documents/collections/$(collectionId)).data.ownerId == request.auth.uid);
-      allow update: if isOwner(collectionId);
-      allow delete: if isOwner(collectionId) || (isSignedIn() && request.auth.uid == uid);
+         && get(/databases/$(database)/documents/collections/$(collectionId)).data.ownerId == request.auth.uid) ||
+        (isSignedIn()
+         && request.auth.uid == uid
+         && exists(/databases/$(database)/documents/collections/$(collectionId)/invites/$(request.auth.token.email))
+         && request.resource.data.role == get(/databases/$(database)/documents/collections/$(collectionId)/invites/$(request.auth.token.email)).data.role
+         && request.resource.data.role in ['owner', 'editor', 'viewer']);
+      allow update: if isOwner(collectionId) && request.resource.data.role in ['owner', 'editor', 'viewer'];
+      allow delete: if (isOwner(collectionId) && request.auth.uid != uid) ||
+        (isSignedIn() && request.auth.uid == uid && memberRole(collectionId) != 'owner');
     }
 
     match /collections/{collectionId}/invites/{email} {
       allow read: if isOwnerOrEditor(collectionId) || (isSignedIn() && request.auth.token.email == email);
-      allow create, update: if isOwnerOrEditor(collectionId);
+      allow create, update: if isOwnerOrEditor(collectionId) && request.resource.data.role in ['editor', 'viewer'];
       allow delete: if isOwnerOrEditor(collectionId) || (isSignedIn() && request.auth.token.email == email);
     }
 

@@ -36,6 +36,15 @@ against a local Firestore emulator via `firebase emulators:exec`. No manual
 emulator startup needed — the emulator is started, the tests run against it,
 and it's torn down automatically.
 
+**Troubleshooting:** if `npm run test:rules` fails with a port-8080-in-use
+error, `emulators:exec` likely left a stray Firestore emulator (Java) process
+running from a previous run that exited uncleanly. Find and kill it, then
+re-run:
+
+- Windows: `Get-Process java | Stop-Process -Force` (or end the `java.exe`
+  process via Task Manager)
+- macOS/Linux: `lsof -ti:8080 | xargs kill`
+
 ## Deploy
 
 ```bash
