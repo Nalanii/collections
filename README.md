@@ -1,11 +1,9 @@
-# 📦 Collections
+# <img src="src/assets/logo-rounded.png" alt="Collections logo" width="32" valign="middle" /> Collections
 
 ![React](https://img.shields.io/badge/React-19.2-grey?style=for-the-badge&logo=react&logoColor=black&labelColor=61DAFB)
 ![Vite](https://img.shields.io/badge/Vite-8.3-grey?style=for-the-badge&logo=vite&logoColor=white&labelColor=646CFF)
 ![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)
 ![Vitest](https://img.shields.io/badge/Vitest-6E9F18?style=for-the-badge&logo=vitest&logoColor=white)
-
-<img src="src/assets/logo.png" alt="Collections logo" width="120" />
 
 A mobile-first, personal collection tracker: define collections (DVDs, vinyl,
 whatever), log what you Have vs. what's on your wishlist, and search fast so
