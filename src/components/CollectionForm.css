@@ -1,0 +1,142 @@
+.collection-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.collection-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.collection-form-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.collection-form-input,
+.collection-form-select {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.collection-form-error {
+  margin: 0;
+  color: var(--color-primary-dark);
+  font-size: 0.8rem;
+}
+
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  gap: 0.5rem;
+}
+
+.emoji-grid-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.emoji-grid-option.selected {
+  border-color: var(--color-primary);
+  background-color: color-mix(in srgb, var(--color-primary) 15%, var(--color-surface));
+}
+
+.field-def-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.field-def-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.field-def-name-input {
+  min-width: 0;
+}
+
+.collection-form-select {
+  padding-right: 0.5rem;
+}
+
+.field-def-remove-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: transparent;
+  color: var(--color-text-muted);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.field-def-add-button {
+  align-self: flex-start;
+  padding: 0.5rem 0.9rem;
+  min-height: 44px;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: transparent;
+  color: var(--color-primary-dark);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.collection-form-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.collection-form-cancel-button {
+  padding: 0.75rem 1.25rem;
+  min-height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: transparent;
+  color: var(--color-text-muted);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.collection-form-submit-button {
+  padding: 0.75rem 1.25rem;
+  min-height: 44px;
+  border: none;
+  border-radius: var(--radius-md);
+  background-color: var(--color-primary);
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.collection-form-submit-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

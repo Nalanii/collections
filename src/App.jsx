@@ -1,10 +1,13 @@
+import { useState } from 'react'
 import './App.css'
+import { Admin } from './components/Admin'
 import { SignIn } from './components/SignIn'
 import { useAuth } from './hooks/useAuth'
 import { signOutUser } from './services/auth'
 
 function App() {
   const { user, initializing } = useAuth()
+  const [adminCollectionId, setAdminCollectionId] = useState(undefined)
 
   if (initializing) {
     return <div className="app-shell app-shell--loading" />
@@ -18,6 +21,8 @@ function App() {
     )
   }
 
+  const showAdmin = adminCollectionId !== undefined
+
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -27,7 +32,25 @@ function App() {
         </button>
       </header>
       <main className="app-main">
-        <p>Your collections will show up here.</p>
+        {showAdmin ? (
+          <Admin
+            key={adminCollectionId ?? 'new'}
+            user={user}
+            collectionId={adminCollectionId}
+            onDone={() => setAdminCollectionId(undefined)}
+          />
+        ) : (
+          <>
+            <p>Your collections will show up here.</p>
+            <button
+              type="button"
+              className="new-collection-button"
+              onClick={() => setAdminCollectionId(null)}
+            >
+              + New collection
+            </button>
+          </>
+        )}
       </main>
     </div>
   )

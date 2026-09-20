@@ -1,0 +1,101 @@
+.admin-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.admin-title {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--color-primary-dark);
+}
+
+.admin-loading {
+  color: var(--color-text-muted);
+}
+
+.admin-error {
+  margin: 0;
+  color: var(--color-primary-dark);
+  font-size: 0.875rem;
+}
+
+.admin-back-button {
+  align-self: flex-start;
+  padding: 0.6rem 1rem;
+  min-height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.admin-danger-zone {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.admin-delete-button {
+  padding: 0.6rem 1rem;
+  min-height: 44px;
+  border: 1px solid var(--color-primary-dark);
+  border-radius: var(--radius-md);
+  background-color: transparent;
+  color: var(--color-primary-dark);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-delete-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.admin-delete-confirm-text {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+
+.admin-delete-confirm-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.admin-delete-confirm-button {
+  padding: 0.6rem 1rem;
+  min-height: 44px;
+  border: none;
+  border-radius: var(--radius-md);
+  background-color: var(--color-primary-dark);
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-delete-confirm-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.admin-delete-cancel-button {
+  padding: 0.6rem 1rem;
+  min-height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.admin-delete-cancel-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
