@@ -25,6 +25,17 @@ This app is wired to the Firebase project `collections-tracker-nls`.
    Your apps → SDK setup and configuration) or ask a project maintainer for
    them.
 
+## Testing
+
+```bash
+npm run test:rules
+```
+
+Runs the Firestore security rules unit tests (`tests/firestore.rules.test.js`)
+against a local Firestore emulator via `firebase emulators:exec`. No manual
+emulator startup needed — the emulator is started, the tests run against it,
+and it's torn down automatically.
+
 ## Deploy
 
 ```bash

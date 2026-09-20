@@ -33,7 +33,7 @@ service cloud.firestore {
     match /collections/{collectionId} {
       allow read: if isMember(collectionId);
       allow create: if isSignedIn();
-      allow update: if isMember(collectionId);
+      allow update: if isOwnerOrEditor(collectionId);
       allow delete: if isOwner(collectionId);
     }
 
