@@ -4,8 +4,11 @@ import { subscribeToItems } from '../services/items'
 import { searchItems } from '../utils/itemSearch'
 import './CollectionView.css'
 
+const EMPTY_FIELD_DEFS = []
+
 export function CollectionView({ collectionId, onBack }) {
   const [collectionData, setCollectionData] = useState(null)
+  const [collectionLoaded, setCollectionLoaded] = useState(false)
   const [collectionError, setCollectionError] = useState(null)
   const [items, setItems] = useState(null)
   const [itemsError, setItemsError] = useState(null)
@@ -14,6 +17,7 @@ export function CollectionView({ collectionId, onBack }) {
 
   useEffect(() => {
     setCollectionError(null)
+    setCollectionLoaded(false)
     const unsubscribe = subscribeToCollection(collectionId, (data, err) => {
       if (err) {
         console.error(err)
@@ -21,6 +25,7 @@ export function CollectionView({ collectionId, onBack }) {
         return
       }
       setCollectionData(data)
+      setCollectionLoaded(true)
     })
     return unsubscribe
   }, [collectionId])
@@ -38,7 +43,7 @@ export function CollectionView({ collectionId, onBack }) {
     return unsubscribe
   }, [collectionId])
 
-  const fieldDefs = collectionData?.fieldDefs ?? []
+  const fieldDefs = collectionData?.fieldDefs ?? EMPTY_FIELD_DEFS
 
   const tabItems = useMemo(() => {
     if (items == null) {
@@ -64,7 +69,17 @@ export function CollectionView({ collectionId, onBack }) {
   }
 
   if (collectionData === null) {
-    return null
+    if (!collectionLoaded) {
+      return null
+    }
+    return (
+      <div className="collection-view-screen">
+        <p className="collection-view-error">This collection could not be found.</p>
+        <button type="button" className="collection-view-back-button" onClick={onBack}>
+          ‹ Back
+        </button>
+      </div>
+    )
   }
 
   return (
