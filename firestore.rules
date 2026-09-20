@@ -39,7 +39,13 @@ service cloud.firestore {
 
     match /collections/{collectionId}/members/{uid} {
       allow read: if isMember(collectionId);
-      allow create, update: if isOwner(collectionId);
+      allow create: if isOwner(collectionId) ||
+        (isSignedIn()
+         && !isMember(collectionId)
+         && request.auth.uid == uid
+         && request.resource.data.role == 'owner'
+         && get(/databases/$(database)/documents/collections/$(collectionId)).data.ownerId == request.auth.uid);
+      allow update: if isOwner(collectionId);
       allow delete: if isOwner(collectionId) || (isSignedIn() && request.auth.uid == uid);
     }
 
@@ -52,7 +58,9 @@ service cloud.firestore {
     match /items/{itemId} {
       allow read: if isMember(resource.data.collectionId);
       allow create: if isOwnerOrEditor(request.resource.data.collectionId);
-      allow update, delete: if isOwnerOrEditor(resource.data.collectionId);
+      allow update: if isOwnerOrEditor(resource.data.collectionId)
+        && request.resource.data.collectionId == resource.data.collectionId;
+      allow delete: if isOwnerOrEditor(resource.data.collectionId);
     }
 
     match /{document=**} {
