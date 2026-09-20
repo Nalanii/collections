@@ -7,8 +7,7 @@
 
 A mobile-first, personal collection tracker: define collections (DVDs, vinyl,
 whatever), log what you Have vs. what's on your wishlist, and search fast so
-you don't buy duplicates. See the full design spec at
-[docs/superpowers/specs/2026-09-20-thrift-collections-design.md](docs/superpowers/specs/2026-09-20-thrift-collections-design.md).
+you don't buy duplicates.
 
 ## Why
 
