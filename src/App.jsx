@@ -42,6 +42,7 @@ function App() {
       <CollectionView
         key={openCollectionId}
         collectionId={openCollectionId}
+        user={user}
         onBack={() => setOpenCollectionId(null)}
       />
     )

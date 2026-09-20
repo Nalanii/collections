@@ -177,3 +177,177 @@
   font-size: 0.85rem;
   overflow-wrap: anywhere;
 }
+
+.collection-view-mode-toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.collection-view-mode-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background-color: var(--color-surface);
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.collection-view-mode-button--active {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary);
+  color: #ffffff;
+}
+
+.collection-view-add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.collection-view-add-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.collection-view-add-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.collection-view-add-input,
+.collection-view-add-textarea {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 1rem;
+  min-height: 44px;
+}
+
+.collection-view-add-textarea {
+  resize: vertical;
+}
+
+.collection-view-status-radio {
+  display: flex;
+  gap: 1rem;
+}
+
+.collection-view-status-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.collection-view-status-option--have {
+  color: var(--color-accent-green);
+}
+
+.collection-view-status-option--iso {
+  color: var(--color-accent-purple);
+}
+
+.collection-view-add-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+.collection-view-save-button {
+  min-height: 44px;
+  padding: 0 1.25rem;
+  border: none;
+  border-radius: var(--radius-md);
+  background-color: var(--color-primary);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.collection-view-save-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.collection-view-cancel-edit-button {
+  min-height: 44px;
+  padding: 0 1.1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.collection-view-add-hint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  text-align: right;
+}
+
+.collection-view-item-row-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.collection-view-item-edit-button,
+.collection-view-item-delete-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background-color: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.collection-view-item-delete-button {
+  color: var(--color-primary-dark);
+}
+
+.collection-view-item-delete-confirm-button,
+.collection-view-item-delete-cancel-button {
+  min-height: 32px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background-color: var(--color-surface);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.collection-view-item-delete-confirm-button {
+  border-color: var(--color-primary-dark);
+  background-color: var(--color-primary-dark);
+  color: #ffffff;
+}
