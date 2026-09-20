@@ -476,6 +476,33 @@ describe('owner bootstrap (self-create first members doc)', () => {
         .set({ role: 'owner' })
     );
   });
+
+  it('createCollection\'s sequential create (collections doc, then owner members doc, nothing pre-seeded) succeeds', async () => {
+    // Reproduces src/services/collections.js's createCollection exactly: no
+    // pre-seeding of the collections doc (unlike the two tests above, which
+    // seed collections/col-bootstrap via seedFixtures before writing the
+    // members doc), and two separate awaited set() calls rather than a
+    // batch or transaction. A writeBatch or runTransaction here fails with
+    // PERMISSION_DENIED because the members/{uid} owner-bootstrap rule's
+    // get() on the sibling collections doc never sees an uncommitted
+    // sibling write from the same batch/transaction -- rules' own
+    // get()/exists() calls only see already-committed state. Awaiting the
+    // first write's commit before issuing the second is what lets the
+    // second write's rule evaluation see the collections doc.
+    const db = testEnv.authenticatedContext('new-owner-uid').firestore();
+    const collectionRef = db.collection('collections').doc('col-new');
+    const memberRef = collectionRef.collection('members').doc('new-owner-uid');
+
+    await assertSucceeds(
+      collectionRef.set({
+        name: 'New Collection',
+        emoji: '🧵',
+        ownerId: 'new-owner-uid',
+        fieldDefs: [],
+      })
+    );
+    await assertSucceeds(memberRef.set({ role: 'owner' }));
+  });
 });
 
 describe('invite acceptance', () => {
