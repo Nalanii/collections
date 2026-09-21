@@ -53,6 +53,7 @@ export async function createCollection(user, { name, emoji, fieldDefs }) {
       await setDoc(memberRef, {
         uid: user.uid,
         role: 'owner',
+        email: user.email,
         joinedAt: serverTimestamp(),
       })
       return newId
@@ -135,4 +136,32 @@ export function subscribeToCollection(collectionId, callback) {
       callback(null, error)
     }
   )
+}
+
+// `callback` is invoked as `callback(members, error)`. On a successful
+// snapshot, `members` is an array of `{ uid, role, email?, joinedAt }` for
+// every doc in `collections/{collectionId}/members` (uid comes from the doc
+// ID, not a lookup). `email` is only present on member docs written after
+// this field was added -- older docs may omit it. On a listener error (e.g.
+// `permission-denied`), `members` is `[]` and `error` is the Firestore
+// error.
+export function subscribeToMembers(collectionId, callback) {
+  return onSnapshot(
+    collection(db, 'collections', collectionId, 'members'),
+    (snapshot) => {
+      callback(snapshot.docs.map((docSnap) => ({ uid: docSnap.id, ...docSnap.data() })))
+    },
+    (error) => {
+      callback([], error)
+    }
+  )
+}
+
+// Deletes a `collections/{collectionId}/members/{uid}` doc. Used both for an
+// owner revoking another member's access and for a member leaving on their
+// own -- firestore.rules' delete rule for this path already distinguishes
+// the two cases (owner deleting someone else vs. a non-owner deleting their
+// own doc) and rejects an owner trying to delete their own.
+export function removeMember(collectionId, uid) {
+  return deleteDoc(doc(db, 'collections', collectionId, 'members', uid))
 }

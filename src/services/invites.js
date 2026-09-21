@@ -72,6 +72,7 @@ export async function acceptInvite(user, collectionId, role, email) {
   await setDoc(doc(db, 'collections', collectionId, 'members', user.uid), {
     uid: user.uid,
     role,
+    email,
     joinedAt: serverTimestamp(),
   })
 

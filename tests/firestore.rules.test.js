@@ -195,6 +195,13 @@ describe('owner (full access)', () => {
     );
   });
 
+  it('can delete collections/col1/members/editor-uid doc (revoke access)', async () => {
+    const db = testEnv.authenticatedContext('owner-uid').firestore();
+    await assertSucceeds(
+      db.collection('collections').doc('col1').collection('members').doc('editor-uid').delete()
+    );
+  });
+
   it('cannot change an item collectionId on update (immutable)', async () => {
     const db = testEnv.authenticatedContext('owner-uid').firestore();
     await assertFails(
