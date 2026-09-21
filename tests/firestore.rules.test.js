@@ -43,7 +43,7 @@ async function seedFixtures() {
       .doc('col1')
       .collection('invites')
       .doc('invited@example.com')
-      .set({ role: 'editor', invitedBy: 'owner-uid' });
+      .set({ role: 'editor', invitedBy: 'owner-uid', email: 'invited@example.com' });
 
     await db.collection('items').doc('item1').set({
       collectionId: 'col1',
@@ -584,6 +584,37 @@ describe('collectionGroup members query (Home screen "my collections" lookup)', 
   it('an unauthenticated user cannot run the collectionGroup query', async () => {
     const db = testEnv.unauthenticatedContext().firestore();
     await assertFails(db.collectionGroup('members').where('uid', '==', 'owner-uid').get());
+  });
+});
+
+describe('collectionGroup invites query (pending-invites inbox lookup)', () => {
+  beforeEach_seed();
+
+  it('an invited user can list invite docs addressed to their own email', async () => {
+    const db = testEnv
+      .authenticatedContext('invitee-uid', { email: 'invited@example.com' })
+      .firestore();
+    const snapshot = await assertSucceeds(
+      db.collectionGroup('invites').where('email', '==', 'invited@example.com').get()
+    );
+    expect(snapshot.size).toBe(1);
+    expect(snapshot.docs[0].ref.path).toBe('collections/col1/invites/invited@example.com');
+  });
+
+  it('cannot list invites by filtering on someone else\'s email', async () => {
+    const db = testEnv
+      .authenticatedContext('someone-else-uid', { email: 'someone-else@example.com' })
+      .firestore();
+    await assertFails(
+      db.collectionGroup('invites').where('email', '==', 'invited@example.com').get()
+    );
+  });
+
+  it('an unauthenticated user cannot run the collectionGroup invites query', async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertFails(
+      db.collectionGroup('invites').where('email', '==', 'invited@example.com').get()
+    );
   });
 });
 

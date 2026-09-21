@@ -74,6 +74,18 @@ service cloud.firestore {
       allow delete: if isOwnerOrEditor(collectionId) || (isSignedIn() && request.auth.token.email == email);
     }
 
+    // The nested match above scopes reads/writes to one known collectionId
+    // and does not authorize a collectionGroup('invites') query (pending-
+    // invites inbox lookup) -- Firestore only authorizes collection-group
+    // queries via a top-level `{path=**}` match. This lets a signed-in user
+    // list only invite docs addressed to their own email across every
+    // collection; each doc's parent collection can already be read/deleted
+    // by that same user under the nested rule above, using the email match
+    // this rule just proved.
+    match /{path=**}/invites/{inviteId} {
+      allow read: if isSignedIn() && resource.data.email == request.auth.token.email;
+    }
+
     match /items/{itemId} {
       allow read: if isMember(resource.data.collectionId);
       allow create: if isOwnerOrEditor(request.resource.data.collectionId);
