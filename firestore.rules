@@ -57,7 +57,7 @@ service cloud.firestore {
          && request.auth.uid == uid
          && exists(/databases/$(database)/documents/collections/$(collectionId)/invites/$(request.auth.token.email))
          && request.resource.data.role == get(/databases/$(database)/documents/collections/$(collectionId)/invites/$(request.auth.token.email)).data.role
-         && request.resource.data.role in ['owner', 'editor', 'viewer']);
+         && request.resource.data.role in ['editor', 'viewer']);
       allow update: if isOwner(collectionId) && request.resource.data.role in ['owner', 'editor', 'viewer'];
       allow delete: if (isOwner(collectionId) && request.auth.uid != uid) ||
         (isSignedIn() && request.auth.uid == uid && memberRole(collectionId) != 'owner');

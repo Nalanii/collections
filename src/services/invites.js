@@ -12,8 +12,9 @@ import {
 import { db } from './firebase'
 
 export async function createInvite(inviterUid, collectionId, email, role) {
-  await setDoc(doc(db, 'collections', collectionId, 'invites', email), {
-    email,
+  const normalizedEmail = email.toLowerCase()
+  await setDoc(doc(db, 'collections', collectionId, 'invites', normalizedEmail), {
+    email: normalizedEmail,
     role,
     invitedBy: inviterUid,
     invitedAt: serverTimestamp(),
@@ -81,5 +82,5 @@ export async function acceptInvite(user, collectionId, role, email) {
 }
 
 export function declineInvite(collectionId, email) {
-  return deleteDoc(doc(db, 'collections', collectionId, 'invites', email))
+  return deleteDoc(doc(db, 'collections', collectionId, 'invites', email.toLowerCase()))
 }
