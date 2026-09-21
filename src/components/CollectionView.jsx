@@ -73,11 +73,25 @@ function DeleteIcon() {
   )
 }
 
+function GearIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+      <circle cx="8" cy="8" r="2.25" fill="none" stroke="currentColor" strokeWidth="1.5" />
+      <path
+        d="M8 1.5v1.6M8 12.9v1.6M14.5 8h-1.6M3.1 8H1.5M12.36 3.64l-1.13 1.13M4.77 11.23l-1.13 1.13M12.36 12.36l-1.13-1.13M4.77 4.77L3.64 3.64"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
 function emptyFormState() {
   return { fields: {}, originalFields: {}, status: 'have', notes: '' }
 }
 
-export function CollectionView({ collectionId, user, onBack }) {
+export function CollectionView({ collectionId, user, onBack, onManage = () => {} }) {
   const [collectionData, setCollectionData] = useState(null)
   const [collectionLoaded, setCollectionLoaded] = useState(false)
   const [collectionError, setCollectionError] = useState(null)
@@ -295,6 +309,14 @@ export function CollectionView({ collectionId, user, onBack }) {
         </button>
         <span className="collection-view-emoji">{collectionData.emoji}</span>
         <span className="collection-view-name">{collectionData.name}</span>
+        <button
+          type="button"
+          className="collection-view-manage-button"
+          onClick={() => onManage(collectionId)}
+          aria-label="Manage collection"
+        >
+          <GearIcon />
+        </button>
       </div>
 
       <div className="collection-view-mode-toggle" role="tablist" aria-label="Search or add items">

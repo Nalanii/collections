@@ -31,7 +31,13 @@ service cloud.firestore {
     }
 
     match /collections/{collectionId} {
-      allow read: if isMember(collectionId);
+      // The pending-invites inbox needs to show a collection's name/emoji
+      // for a user who has a pending invite but isn't a member yet -- so
+      // read access also extends to a signed-in user with a matching
+      // invites/{email} doc for this collection, mirroring the same
+      // exists() check the members/{uid} invite-acceptance rule below uses.
+      allow read: if isMember(collectionId) ||
+        (isSignedIn() && exists(/databases/$(database)/documents/collections/$(collectionId)/invites/$(request.auth.token.email)));
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update: if isOwnerOrEditor(collectionId)
         && request.resource.data.ownerId == resource.data.ownerId;

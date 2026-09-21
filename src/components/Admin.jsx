@@ -6,9 +6,14 @@ import {
   subscribeToCollection,
   updateCollection,
 } from '../services/collections'
+import { createInvite } from '../services/invites'
 import './Admin.css'
 
 const EMPTY_VALUES = { name: '', emoji: '', fieldDefs: [] }
+const INVITE_ROLES = [
+  { value: 'editor', label: 'Editor' },
+  { value: 'viewer', label: 'Viewer' },
+]
 
 export function Admin({ user, collectionId, onDone }) {
   const isEditMode = collectionId != null
@@ -20,6 +25,11 @@ export function Admin({ user, collectionId, onDone }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState('editor')
+  const [inviteError, setInviteError] = useState(null)
+  const [inviteSuccess, setInviteSuccess] = useState(null)
+  const [inviting, setInviting] = useState(false)
 
   useEffect(() => {
     if (!isEditMode) {
@@ -59,6 +69,28 @@ export function Admin({ user, collectionId, onDone }) {
         isEditMode ? 'Could not save changes. Please try again.' : 'Could not create collection. Please try again.'
       )
       setSubmitting(false)
+    }
+  }
+
+  async function handleInviteSubmit(event) {
+    event.preventDefault()
+    const trimmedEmail = inviteEmail.trim()
+    if (trimmedEmail === '') {
+      return
+    }
+    setInviteError(null)
+    setInviteSuccess(null)
+    setInviting(true)
+    try {
+      await createInvite(user.uid, collectionId, trimmedEmail, inviteRole)
+      setInviteSuccess(`Invite sent to ${trimmedEmail}.`)
+      setInviteEmail('')
+      setInviteRole('editor')
+    } catch (err) {
+      console.error(err)
+      setInviteError('Could not send invite. Please try again.')
+    } finally {
+      setInviting(false)
     }
   }
 
@@ -110,6 +142,8 @@ export function Admin({ user, collectionId, onDone }) {
     ? { name: collection.name, emoji: collection.emoji, fieldDefs: collection.fieldDefs ?? [] }
     : EMPTY_VALUES
 
+  const isOwner = isEditMode && collection.ownerId === user.uid
+
   return (
     <div className="admin-screen">
       <h2 className="admin-title">{isEditMode ? 'Edit collection' : 'New collection'}</h2>
@@ -125,6 +159,40 @@ export function Admin({ user, collectionId, onDone }) {
       {error && <p className="admin-error">{error}</p>}
 
       {isEditMode && (
+        <div className="admin-invite-zone">
+          <h3 className="admin-section-title">Invite someone</h3>
+          <form className="admin-invite-form" onSubmit={handleInviteSubmit}>
+            <input
+              type="email"
+              className="admin-invite-email-input"
+              value={inviteEmail}
+              onChange={(event) => setInviteEmail(event.target.value)}
+              placeholder="email@example.com"
+              aria-label="Invite email"
+              required
+            />
+            <select
+              className="admin-invite-role-select"
+              value={inviteRole}
+              onChange={(event) => setInviteRole(event.target.value)}
+              aria-label="Invite role"
+            >
+              {INVITE_ROLES.map((role) => (
+                <option key={role.value} value={role.value}>
+                  {role.label}
+                </option>
+              ))}
+            </select>
+            <button type="submit" className="admin-invite-submit-button" disabled={inviting}>
+              {inviting ? 'Sending…' : 'Invite'}
+            </button>
+          </form>
+          {inviteError && <p className="admin-error">{inviteError}</p>}
+          {inviteSuccess && <p className="admin-invite-success">{inviteSuccess}</p>}
+        </div>
+      )}
+
+      {isOwner && (
         <div className="admin-danger-zone">
           {!confirmingDelete ? (
             <button

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { subscribeToUserCollections } from '../services/collections'
+import { PendingInvites } from './PendingInvites'
 import './Home.css'
 
 export function Home({ user, onCreateCollection, onOpenCollection = () => {} }) {
@@ -23,6 +24,8 @@ export function Home({ user, onCreateCollection, onOpenCollection = () => {} }) 
 
   return (
     <div className="home-screen">
+      <PendingInvites user={user} />
+
       {loading && <p className="home-loading">Loading your collections…</p>}
 
       {error && <p className="home-error">{error}</p>}

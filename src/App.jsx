@@ -44,6 +44,7 @@ function App() {
         collectionId={openCollectionId}
         user={user}
         onBack={() => setOpenCollectionId(null)}
+        onManage={(collectionId) => setAdminCollectionId(collectionId)}
       />
     )
   } else {

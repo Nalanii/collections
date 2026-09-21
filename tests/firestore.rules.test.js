@@ -448,6 +448,20 @@ describe('non-member (denied entirely)', () => {
         .delete()
     );
   });
+
+  it('a user with a pending invite (not yet a member) can read the collection doc', async () => {
+    const db = testEnv
+      .authenticatedContext('invitee-uid', { email: 'invited@example.com' })
+      .firestore();
+    await assertSucceeds(db.collection('collections').doc('col1').get());
+  });
+
+  it('a user with no pending invite cannot read the collection doc', async () => {
+    const db = testEnv
+      .authenticatedContext('outsider-uid', { email: 'outsider@example.com' })
+      .firestore();
+    await assertFails(db.collection('collections').doc('col1').get());
+  });
 });
 
 describe('owner bootstrap (self-create first members doc)', () => {

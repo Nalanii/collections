@@ -1,0 +1,90 @@
+.pending-invites {
+  margin-bottom: 1.25rem;
+}
+
+.pending-invites-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  color: var(--color-text);
+}
+
+.pending-invites-error {
+  margin: 0 0 0.5rem;
+  color: var(--color-primary-dark);
+  font-size: 0.875rem;
+}
+
+.pending-invites-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pending-invite-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.pending-invite-emoji {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.pending-invite-details {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.pending-invite-name {
+  font-weight: 600;
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+
+.pending-invite-role {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.pending-invite-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.pending-invite-accept-button,
+.pending-invite-decline-button {
+  padding: 0.5rem 0.75rem;
+  min-height: 44px;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pending-invite-accept-button {
+  border: none;
+  background-color: var(--color-primary);
+  color: #ffffff;
+}
+
+.pending-invite-decline-button {
+  border: 1px solid var(--color-border);
+  background-color: transparent;
+  color: var(--color-text-muted);
+}
+
+.pending-invite-accept-button:disabled,
+.pending-invite-decline-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

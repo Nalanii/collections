@@ -32,6 +32,70 @@
   cursor: pointer;
 }
 
+.admin-section-title {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  color: var(--color-text);
+}
+
+.admin-invite-zone {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.admin-invite-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.admin-invite-email-input {
+  flex: 1 1 12rem;
+  min-height: 44px;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.admin-invite-role-select {
+  min-height: 44px;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.admin-invite-submit-button {
+  padding: 0.6rem 1rem;
+  min-height: 44px;
+  border: none;
+  border-radius: var(--radius-md);
+  background-color: var(--color-primary);
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-invite-submit-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.admin-invite-success {
+  margin: 0.5rem 0 0;
+  color: var(--color-accent-green);
+  font-size: 0.875rem;
+}
+
 .admin-danger-zone {
   margin-top: 1.5rem;
   padding-top: 1rem;
