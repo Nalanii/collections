@@ -3,7 +3,9 @@ import { CollectionForm } from './CollectionForm'
 import {
   createCollection,
   deleteCollection,
+  removeMember,
   subscribeToCollection,
+  subscribeToMembers,
   updateCollection,
 } from '../services/collections'
 import { createInvite } from '../services/invites'
@@ -30,6 +32,10 @@ export function Admin({ user, collectionId, onDone }) {
   const [inviteError, setInviteError] = useState(null)
   const [inviteSuccess, setInviteSuccess] = useState(null)
   const [inviting, setInviting] = useState(false)
+  const [members, setMembers] = useState(null)
+  const [membersError, setMembersError] = useState(null)
+  const [memberBusyKey, setMemberBusyKey] = useState(null)
+  const [memberActionError, setMemberActionError] = useState(null)
 
   useEffect(() => {
     if (!isEditMode) {
@@ -49,6 +55,22 @@ export function Admin({ user, collectionId, onDone }) {
       }
       setCollection(data)
       setLoading(false)
+    })
+    return unsubscribe
+  }, [collectionId, isEditMode])
+
+  useEffect(() => {
+    if (!isEditMode) {
+      setMembers(null)
+      return
+    }
+    const unsubscribe = subscribeToMembers(collectionId, (data, err) => {
+      if (err) {
+        console.error(err)
+        setMembersError('Could not load members.')
+        return
+      }
+      setMembers(data)
     })
     return unsubscribe
   }, [collectionId, isEditMode])
@@ -91,6 +113,24 @@ export function Admin({ user, collectionId, onDone }) {
       setInviteError('Could not send invite. Please try again.')
     } finally {
       setInviting(false)
+    }
+  }
+
+  async function handleRemoveMember(uid) {
+    const isSelf = uid === user.uid
+    setMemberActionError(null)
+    setMemberBusyKey(uid)
+    try {
+      await removeMember(collectionId, uid)
+      if (isSelf) {
+        onDone()
+        return
+      }
+    } catch (err) {
+      console.error(err)
+      setMemberActionError('Could not update membership. Please try again.')
+    } finally {
+      setMemberBusyKey(null)
     }
   }
 
@@ -189,6 +229,44 @@ export function Admin({ user, collectionId, onDone }) {
           </form>
           {inviteError && <p className="admin-error">{inviteError}</p>}
           {inviteSuccess && <p className="admin-invite-success">{inviteSuccess}</p>}
+        </div>
+      )}
+
+      {isEditMode && (
+        <div className="admin-members-zone">
+          <h3 className="admin-section-title">Members</h3>
+          {membersError && <p className="admin-error">{membersError}</p>}
+          {memberActionError && <p className="admin-error">{memberActionError}</p>}
+          {members == null ? (
+            <p className="admin-loading">Loading members…</p>
+          ) : (
+            <ul className="admin-members-list">
+              {members.map((member) => {
+                const isSelf = member.uid === user.uid
+                const canRevoke = isOwner && !isSelf
+                const canLeave = isSelf && member.role !== 'owner'
+                const busy = memberBusyKey === member.uid
+                return (
+                  <li className="admin-member-card" key={member.uid}>
+                    <div className="admin-member-details">
+                      <span className="admin-member-email">{member.email ?? member.uid}</span>
+                      <span className="admin-member-role">{member.role}</span>
+                    </div>
+                    {(canRevoke || canLeave) && (
+                      <button
+                        type="button"
+                        className="admin-member-action-button"
+                        onClick={() => handleRemoveMember(member.uid)}
+                        disabled={busy}
+                      >
+                        {busy ? 'Working…' : canLeave ? 'Leave' : 'Revoke'}
+                      </button>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          )}
         </div>
       )}
 
