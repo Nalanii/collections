@@ -10,6 +10,8 @@ import {
   updateCollection,
 } from '../services/collections'
 import { createInvite } from '../services/invites'
+import { getMemberRole, isViewerRole } from '../utils/permissions'
+import { ReadOnlyBanner } from './ReadOnlyBanner'
 import './Admin.css'
 
 const EMPTY_VALUES = { name: '', emoji: '', fieldDefs: [] }
@@ -176,6 +178,14 @@ export function Admin({ user, collectionId, onDone }) {
     )
   }
 
+  if (isEditMode && members === null) {
+    return (
+      <div className="admin-screen">
+        <p className="admin-loading">Loading collection…</p>
+      </div>
+    )
+  }
+
   if (isEditMode && loadError) {
     return (
       <div className="admin-screen">
@@ -203,22 +213,44 @@ export function Admin({ user, collectionId, onDone }) {
     : EMPTY_VALUES
 
   const isOwner = isEditMode && collection.ownerId === user.uid
+  const rolesLoaded = members !== null
+  const myRole = getMemberRole(members, user.uid)
+  const isViewer = isEditMode && rolesLoaded && isViewerRole(myRole)
 
   return (
     <div className="admin-screen">
       <h2 className="admin-title">{isEditMode ? 'Edit collection' : 'New collection'}</h2>
+      {isViewer && <ReadOnlyBanner />}
 
-      <CollectionForm
-        initialValues={initialValues}
-        onSubmit={handleSubmit}
-        onCancel={onDone}
-        submitLabel={isEditMode ? 'Save changes' : 'Create collection'}
-        submitting={submitting}
-      />
+      {isViewer ? (
+        <div className="admin-readonly-summary">
+          <p className="admin-readonly-summary-name">
+            {initialValues.emoji} {initialValues.name}
+          </p>
+          <ul className="admin-readonly-summary-fields">
+            {initialValues.fieldDefs.map((fieldDef) => (
+              <li key={fieldDef.name}>
+                {fieldDef.name} ({fieldDef.type})
+              </li>
+            ))}
+          </ul>
+          <button type="button" className="admin-back-button" onClick={onDone}>
+            Back
+          </button>
+        </div>
+      ) : (
+        <CollectionForm
+          initialValues={initialValues}
+          onSubmit={handleSubmit}
+          onCancel={onDone}
+          submitLabel={isEditMode ? 'Save changes' : 'Create collection'}
+          submitting={submitting}
+        />
+      )}
 
       {error && <p className="admin-error">{error}</p>}
 
-      {isEditMode && (
+      {isEditMode && !isViewer && (
         <div className="admin-invite-zone">
           <h3 className="admin-section-title">Invite someone</h3>
           <form className="admin-invite-form" onSubmit={handleInviteSubmit}>

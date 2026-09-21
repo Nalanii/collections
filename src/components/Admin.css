@@ -224,3 +224,23 @@
   opacity: 0.6;
   cursor: default;
 }
+
+.admin-readonly-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.admin-readonly-summary-name {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.admin-readonly-summary-fields {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
