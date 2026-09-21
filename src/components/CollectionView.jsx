@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { subscribeToCollection } from '../services/collections'
+import { subscribeToCollection, subscribeToMembers } from '../services/collections'
 import { addItem, deleteItem, subscribeToItems, updateItem } from '../services/items'
 import { searchItems } from '../utils/itemSearch'
+import { getMemberRole, isViewerRole } from '../utils/permissions'
+import { ReadOnlyBanner } from './ReadOnlyBanner'
 import './CollectionView.css'
 
 const EMPTY_FIELD_DEFS = []
@@ -109,6 +111,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
   const [deleteConfirmId, setDeleteConfirmId] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
   const [deleteError, setDeleteError] = useState(null)
+  const [members, setMembers] = useState(null)
   const firstFieldRef = useRef(null)
 
   useEffect(() => {
@@ -142,12 +145,34 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
   }, [collectionId])
 
   useEffect(() => {
+    setMembers(null)
+    const unsubscribe = subscribeToMembers(collectionId, (data, err) => {
+      if (err) {
+        console.error(err)
+      }
+      setMembers(data)
+    })
+    return unsubscribe
+  }, [collectionId])
+
+  useEffect(() => {
     if (mode === 'add') {
       firstFieldRef.current?.focus()
     }
   }, [mode, focusToken])
 
+  useEffect(() => {
+    if (isViewer && mode !== 'search') {
+      setMode('search')
+      setEditingItemId(null)
+      setFormError(null)
+    }
+  }, [isViewer, mode])
+
   const fieldDefs = collectionData?.fieldDefs ?? EMPTY_FIELD_DEFS
+  const rolesLoaded = members !== null
+  const myRole = getMemberRole(members, user.uid)
+  const isViewer = rolesLoaded && isViewerRole(myRole)
 
   const tabItems = useMemo(() => {
     if (items == null) {
@@ -319,26 +344,30 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
         </button>
       </div>
 
-      <div className="collection-view-mode-toggle" role="tablist" aria-label="Search or add items">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === 'search'}
-          className={`collection-view-mode-button${mode === 'search' ? ' collection-view-mode-button--active' : ''}`}
-          onClick={handleSwitchToSearch}
-        >
-          <SearchIcon /> Search
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === 'add'}
-          className={`collection-view-mode-button${mode === 'add' ? ' collection-view-mode-button--active' : ''}`}
-          onClick={handleSwitchToAdd}
-        >
-          <PlusIcon /> Add
-        </button>
-      </div>
+      {isViewer && <ReadOnlyBanner />}
+
+      {!isViewer && (
+        <div className="collection-view-mode-toggle" role="tablist" aria-label="Search or add items">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'search'}
+            className={`collection-view-mode-button${mode === 'search' ? ' collection-view-mode-button--active' : ''}`}
+            onClick={handleSwitchToSearch}
+          >
+            <SearchIcon /> Search
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'add'}
+            className={`collection-view-mode-button${mode === 'add' ? ' collection-view-mode-button--active' : ''}`}
+            onClick={handleSwitchToAdd}
+          >
+            <PlusIcon /> Add
+          </button>
+        </div>
+      )}
 
       {mode === 'add' && (
         <form
@@ -515,45 +544,47 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
                       </span>
                     </div>
                     {item.notes && <p className="collection-view-item-row-notes">{item.notes}</p>}
-                    <div className="collection-view-item-row-actions">
-                      <button
-                        type="button"
-                        className="collection-view-item-edit-button"
-                        onClick={() => handleEditClick(item)}
-                        aria-label="Edit item"
-                      >
-                        <EditIcon />
-                      </button>
-                      {deleteConfirmId === item.id ? (
-                        <>
-                          <button
-                            type="button"
-                            className="collection-view-item-delete-confirm-button"
-                            onClick={() => handleConfirmDelete(item.id)}
-                            disabled={deletingId === item.id}
-                          >
-                            {deletingId === item.id ? 'Deleting…' : 'Confirm'}
-                          </button>
-                          <button
-                            type="button"
-                            className="collection-view-item-delete-cancel-button"
-                            onClick={() => setDeleteConfirmId(null)}
-                            disabled={deletingId === item.id}
-                          >
-                            Cancel
-                          </button>
-                        </>
-                      ) : (
+                    {!isViewer && (
+                      <div className="collection-view-item-row-actions">
                         <button
                           type="button"
-                          className="collection-view-item-delete-button"
-                          onClick={() => setDeleteConfirmId(item.id)}
-                          aria-label="Delete item"
+                          className="collection-view-item-edit-button"
+                          onClick={() => handleEditClick(item)}
+                          aria-label="Edit item"
                         >
-                          <DeleteIcon />
+                          <EditIcon />
                         </button>
-                      )}
-                    </div>
+                        {deleteConfirmId === item.id ? (
+                          <>
+                            <button
+                              type="button"
+                              className="collection-view-item-delete-confirm-button"
+                              onClick={() => handleConfirmDelete(item.id)}
+                              disabled={deletingId === item.id}
+                            >
+                              {deletingId === item.id ? 'Deleting…' : 'Confirm'}
+                            </button>
+                            <button
+                              type="button"
+                              className="collection-view-item-delete-cancel-button"
+                              onClick={() => setDeleteConfirmId(null)}
+                              disabled={deletingId === item.id}
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            className="collection-view-item-delete-button"
+                            onClick={() => setDeleteConfirmId(item.id)}
+                            aria-label="Delete item"
+                          >
+                            <DeleteIcon />
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </li>
                 )
               })}
