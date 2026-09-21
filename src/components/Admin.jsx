@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CollectionForm } from './CollectionForm'
 import {
+  backfillMemberProfile,
   createCollection,
   deleteCollection,
   removeMember,
@@ -36,6 +37,7 @@ export function Admin({ user, collectionId, onDone }) {
   const [membersError, setMembersError] = useState(null)
   const [memberBusyKey, setMemberBusyKey] = useState(null)
   const [memberActionError, setMemberActionError] = useState(null)
+  const backfilledOwnProfileRef = useRef(false)
 
   useEffect(() => {
     if (!isEditMode) {
@@ -75,6 +77,23 @@ export function Admin({ user, collectionId, onDone }) {
     })
     return unsubscribe
   }, [collectionId, isEditMode])
+
+  useEffect(() => {
+    if (!isEditMode || collection?.ownerId !== user.uid || members == null || backfilledOwnProfileRef.current) {
+      return
+    }
+    const ownMember = members.find((member) => member.uid === user.uid)
+    if (ownMember == null) return
+    if (ownMember.email === user.email && ownMember.displayName === user.displayName) return
+
+    backfilledOwnProfileRef.current = true
+    backfillMemberProfile(collectionId, user.uid, { email: user.email, displayName: user.displayName }).catch(
+      (err) => {
+        console.error(err)
+        backfilledOwnProfileRef.current = false
+      }
+    )
+  }, [isEditMode, collection, members, collectionId, user.uid, user.email, user.displayName])
 
   async function handleSubmit(values) {
     setError(null)

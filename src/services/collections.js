@@ -158,6 +158,16 @@ export function subscribeToMembers(collectionId, callback) {
   )
 }
 
+// Backfills `email`/`displayName` onto a `collections/{collectionId}/members/{uid}`
+// doc written before those fields existed. firestore.rules only lets the
+// owner update any members/{uid} doc (needed so an owner's own pre-existing
+// member doc -- written back when createCollection didn't set these fields
+// -- can be self-healed); a non-owner's stale doc can't be backfilled this
+// way and only gets these fields once they leave and rejoin.
+export function backfillMemberProfile(collectionId, uid, { email, displayName }) {
+  return updateDoc(doc(db, 'collections', collectionId, 'members', uid), { email, displayName })
+}
+
 // Deletes a `collections/{collectionId}/members/{uid}` doc. Used both for an
 // owner revoking another member's access and for a member leaving on their
 // own -- firestore.rules' delete rule for this path already distinguishes
