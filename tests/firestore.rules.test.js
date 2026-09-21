@@ -123,6 +123,30 @@ describe('owner (full access)', () => {
     );
   });
 
+  it('cannot create collections/col1/members/* with an invalid role', async () => {
+    const db = testEnv.authenticatedContext('owner-uid').firestore();
+    await assertFails(
+      db
+        .collection('collections')
+        .doc('col1')
+        .collection('members')
+        .doc('new-uid')
+        .set({ role: 'superadmin' })
+    );
+  });
+
+  it('cannot update collections/col1/members/* to an invalid role', async () => {
+    const db = testEnv.authenticatedContext('owner-uid').firestore();
+    await assertFails(
+      db
+        .collection('collections')
+        .doc('col1')
+        .collection('members')
+        .doc('editor-uid')
+        .update({ role: 'superadmin' })
+    );
+  });
+
   it('can read collections/col1/invites/*', async () => {
     const db = testEnv.authenticatedContext('owner-uid').firestore();
     await assertSucceeds(
@@ -156,6 +180,18 @@ describe('owner (full access)', () => {
         .collection('invites')
         .doc('invited@example.com')
         .update({ role: 'viewer' })
+    );
+  });
+
+  it('cannot create collections/col1/invites/* with an invalid role', async () => {
+    const db = testEnv.authenticatedContext('owner-uid').firestore();
+    await assertFails(
+      db
+        .collection('collections')
+        .doc('col1')
+        .collection('invites')
+        .doc('new-invite@example.com')
+        .set({ role: 'superadmin', invitedBy: 'owner-uid' })
     );
   });
 
@@ -671,6 +707,56 @@ describe('unauthenticated', () => {
     const db = testEnv.unauthenticatedContext().firestore();
     await assertFails(
       db.collection('items').add({ collectionId: 'col1', status: 'want', createdBy: 'x' })
+    );
+  });
+});
+
+describe('collections create validation', () => {
+  beforeEach_seed();
+
+  it('cannot create a collections doc whose ownerId does not match the caller', async () => {
+    const db = testEnv.authenticatedContext('some-uid').firestore();
+    await assertFails(
+      db
+        .collection('collections')
+        .doc('some-new-id')
+        .set({ name: 'New Collection', ownerId: 'a-different-uid' })
+    );
+  });
+});
+
+describe('invite email case sensitivity (rules do verbatim string comparison)', () => {
+  beforeEach_seed();
+
+  // src/services/invites.js lowercases invite emails at write time (see
+  // commit bc98e00), so invite doc IDs are always lowercase and match
+  // Firebase Auth's lowercase token email. The rules themselves never
+  // normalize case -- request.auth.token.email == email is a verbatim
+  // string comparison against the doc ID. This test documents that current
+  // rules behavior directly: a mixed-case invite doc ID does NOT match a
+  // lowercase token email, proving the case-insensitivity guarantee comes
+  // entirely from the client normalizing at write time, not from the rules.
+  it('a lowercase token email does not match a mixed-case invite doc id', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await context
+        .firestore()
+        .collection('collections')
+        .doc('col1')
+        .collection('invites')
+        .doc('MixedCase@Example.com')
+        .set({ role: 'editor', invitedBy: 'owner-uid', email: 'MixedCase@Example.com' });
+    });
+
+    const db = testEnv
+      .authenticatedContext('mixedcase-uid', { email: 'mixedcase@example.com' })
+      .firestore();
+    await assertFails(
+      db
+        .collection('collections')
+        .doc('col1')
+        .collection('invites')
+        .doc('MixedCase@Example.com')
+        .get()
     );
   });
 });
