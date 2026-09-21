@@ -173,6 +173,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
   const rolesLoaded = members !== null
   const myRole = getMemberRole(members, user.uid)
   const isViewer = rolesLoaded && isViewerRole(myRole)
+  const showWriteControls = rolesLoaded && !isViewer
 
   const tabItems = useMemo(() => {
     if (items == null) {
@@ -346,7 +347,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
 
       {isViewer && <ReadOnlyBanner />}
 
-      {!isViewer && (
+      {showWriteControls && (
         <div className="collection-view-mode-toggle" role="tablist" aria-label="Search or add items">
           <button
             type="button"
@@ -544,7 +545,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
                       </span>
                     </div>
                     {item.notes && <p className="collection-view-item-row-notes">{item.notes}</p>}
-                    {!isViewer && (
+                    {showWriteControls && (
                       <div className="collection-view-item-row-actions">
                         <button
                           type="button"
