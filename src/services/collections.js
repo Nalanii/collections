@@ -54,6 +54,7 @@ export async function createCollection(user, { name, emoji, fieldDefs }) {
         uid: user.uid,
         role: 'owner',
         email: user.email,
+        displayName: user.displayName,
         joinedAt: serverTimestamp(),
       })
       return newId
@@ -139,12 +140,12 @@ export function subscribeToCollection(collectionId, callback) {
 }
 
 // `callback` is invoked as `callback(members, error)`. On a successful
-// snapshot, `members` is an array of `{ uid, role, email?, joinedAt }` for
-// every doc in `collections/{collectionId}/members` (uid comes from the doc
-// ID, not a lookup). `email` is only present on member docs written after
-// this field was added -- older docs may omit it. On a listener error (e.g.
-// `permission-denied`), `members` is `[]` and `error` is the Firestore
-// error.
+// snapshot, `members` is an array of `{ uid, role, email?, displayName?, joinedAt }`
+// for every doc in `collections/{collectionId}/members` (uid comes from the
+// doc ID, not a lookup). `email`/`displayName` are only present on member
+// docs written after those fields were added -- older docs may omit them. On
+// a listener error (e.g. `permission-denied`), `members` is `[]` and `error`
+// is the Firestore error.
 export function subscribeToMembers(collectionId, callback) {
   return onSnapshot(
     collection(db, 'collections', collectionId, 'members'),

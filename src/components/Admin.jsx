@@ -250,7 +250,9 @@ export function Admin({ user, collectionId, onDone }) {
                 return (
                   <li className="admin-member-card" key={member.uid}>
                     <div className="admin-member-details">
-                      <span className="admin-member-email">{member.email ?? member.uid}</span>
+                      <span className="admin-member-email">
+                        {member.displayName ?? member.email ?? member.uid}
+                      </span>
                       <span className="admin-member-role">{member.role}</span>
                     </div>
                     {(canRevoke || canLeave) && (

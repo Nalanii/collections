@@ -73,6 +73,7 @@ export async function acceptInvite(user, collectionId, role, email) {
     uid: user.uid,
     role,
     email,
+    displayName: user.displayName,
     joinedAt: serverTimestamp(),
   })
 
