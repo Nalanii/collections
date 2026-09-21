@@ -388,6 +388,11 @@ describe('viewer (read-only)', () => {
     );
   });
 
+  it('can list collections/col1/members', async () => {
+    const db = testEnv.authenticatedContext('viewer-uid').firestore();
+    await assertSucceeds(db.collection('collections').doc('col1').collection('members').get());
+  });
+
   it('cannot read an unfiltered items collection listing', async () => {
     const db = testEnv.authenticatedContext('viewer-uid').firestore();
     await assertFails(db.collection('items').get());
@@ -407,6 +412,11 @@ describe('non-member (denied entirely)', () => {
     await assertFails(
       db.collection('collections').doc('col1').collection('members').doc('owner-uid').get()
     );
+  });
+
+  it('cannot list collections/col1/members', async () => {
+    const db = testEnv.authenticatedContext('outsider-uid').firestore();
+    await assertFails(db.collection('collections').doc('col1').collection('members').get());
   });
 
   it('cannot read items with collectionId col1', async () => {

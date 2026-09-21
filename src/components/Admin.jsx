@@ -68,6 +68,7 @@ export function Admin({ user, collectionId, onDone }) {
       if (err) {
         console.error(err)
         setMembersError('Could not load members.')
+        setMembers(data)
         return
       }
       setMembers(data)
