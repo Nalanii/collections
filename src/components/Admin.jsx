@@ -10,7 +10,7 @@ import {
   updateCollection,
 } from '../services/collections'
 import { createInvite } from '../services/invites'
-import { getMemberRole, isViewerRole } from '../utils/permissions'
+import { canWrite, getMemberRole, isViewerRole } from '../utils/permissions'
 import { ReadOnlyBanner } from './ReadOnlyBanner'
 import './Admin.css'
 
@@ -216,13 +216,22 @@ export function Admin({ user, collectionId, onDone }) {
   const rolesLoaded = members !== null
   const myRole = getMemberRole(members, user.uid)
   const isViewer = isEditMode && rolesLoaded && isViewerRole(myRole)
+  const showWriteControls = rolesLoaded && canWrite(myRole)
 
   return (
     <div className="admin-screen">
       <h2 className="admin-title">{isEditMode ? 'Edit collection' : 'New collection'}</h2>
       {isViewer && <ReadOnlyBanner />}
 
-      {isViewer ? (
+      {!isEditMode || showWriteControls ? (
+        <CollectionForm
+          initialValues={initialValues}
+          onSubmit={handleSubmit}
+          onCancel={onDone}
+          submitLabel={isEditMode ? 'Save changes' : 'Create collection'}
+          submitting={submitting}
+        />
+      ) : (
         <div className="admin-readonly-summary">
           <p className="admin-readonly-summary-name">
             {initialValues.emoji} {initialValues.name}
@@ -238,19 +247,11 @@ export function Admin({ user, collectionId, onDone }) {
             Back
           </button>
         </div>
-      ) : (
-        <CollectionForm
-          initialValues={initialValues}
-          onSubmit={handleSubmit}
-          onCancel={onDone}
-          submitLabel={isEditMode ? 'Save changes' : 'Create collection'}
-          submitting={submitting}
-        />
       )}
 
       {error && <p className="admin-error">{error}</p>}
 
-      {isEditMode && !isViewer && (
+      {isEditMode && showWriteControls && (
         <div className="admin-invite-zone">
           <h3 className="admin-section-title">Invite someone</h3>
           <form className="admin-invite-form" onSubmit={handleInviteSubmit}>

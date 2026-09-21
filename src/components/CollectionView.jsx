@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { subscribeToCollection, subscribeToMembers } from '../services/collections'
 import { addItem, deleteItem, subscribeToItems, updateItem } from '../services/items'
 import { searchItems } from '../utils/itemSearch'
-import { getMemberRole, isViewerRole } from '../utils/permissions'
+import { canWrite, getMemberRole, isViewerRole } from '../utils/permissions'
 import { ReadOnlyBanner } from './ReadOnlyBanner'
 import './CollectionView.css'
 
@@ -161,6 +161,12 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
     }
   }, [mode, focusToken])
 
+  const fieldDefs = collectionData?.fieldDefs ?? EMPTY_FIELD_DEFS
+  const rolesLoaded = members !== null
+  const myRole = getMemberRole(members, user.uid)
+  const isViewer = rolesLoaded && isViewerRole(myRole)
+  const showWriteControls = rolesLoaded && canWrite(myRole)
+
   useEffect(() => {
     if (isViewer && mode !== 'search') {
       setMode('search')
@@ -168,12 +174,6 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
       setFormError(null)
     }
   }, [isViewer, mode])
-
-  const fieldDefs = collectionData?.fieldDefs ?? EMPTY_FIELD_DEFS
-  const rolesLoaded = members !== null
-  const myRole = getMemberRole(members, user.uid)
-  const isViewer = rolesLoaded && isViewerRole(myRole)
-  const showWriteControls = rolesLoaded && !isViewer
 
   const tabItems = useMemo(() => {
     if (items == null) {

@@ -13,3 +13,7 @@ export function getMemberRole(members, uid) {
 export function isViewerRole(role) {
   return role === 'viewer'
 }
+
+export function canWrite(role) {
+  return role === 'owner' || role === 'editor'
+}
