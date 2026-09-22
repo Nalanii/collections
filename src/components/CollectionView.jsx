@@ -107,6 +107,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
   const [deleteError, setDeleteError] = useState(null)
   const [members, setMembers] = useState(null)
   const firstFieldRef = useRef(null)
+  const savingRef = useRef(false)
 
   useEffect(() => {
     setCollectionData(null)
@@ -193,6 +194,9 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
   }
 
   function handleSwitchToSearch() {
+    setEditingItemId(null)
+    setForm(emptyFormState())
+    setFormError(null)
     setMode('search')
   }
 
@@ -226,19 +230,21 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
   }
 
   async function handleSaveItem() {
-    if (saving) {
+    if (savingRef.current) {
       return
     }
     const trimmedFields = Object.fromEntries(
       fieldDefs.map((fieldDef) => [fieldDef.name, (form.fields[fieldDef.name] ?? '').trim()])
     )
     const trimmedNotes = form.notes.trim()
-    const hasAnyValue = Object.values(trimmedFields).some((value) => value !== '')
+    const hasAnyValue =
+      Object.values(trimmedFields).some((value) => value !== '') || trimmedNotes !== ''
     if (!hasAnyValue) {
       setFormError('Fill in at least one field.')
       return
     }
     setFormError(null)
+    savingRef.current = true
     setSaving(true)
     try {
       if (editingItemId) {
@@ -261,6 +267,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
         editingItemId ? 'Could not save changes. Please try again.' : 'Could not add item. Please try again.'
       )
     } finally {
+      savingRef.current = false
       setSaving(false)
     }
   }
@@ -271,10 +278,15 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
   }
 
   function handleFormKeyDown(event) {
-    if (event.ctrlKey && event.key === 'Enter') {
+    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
       event.preventDefault()
       handleSaveItem()
     }
+  }
+
+  function handleCancelDelete() {
+    setDeleteConfirmId(null)
+    setDeleteError(null)
   }
 
   async function handleConfirmDelete(itemId) {
@@ -342,11 +354,10 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
       {isViewer && <ReadOnlyBanner />}
 
       {showWriteControls && (
-        <div className="collection-view-mode-toggle" role="tablist" aria-label="Search or add items">
+        <div className="collection-view-mode-toggle" role="group" aria-label="Search or add items">
           <button
             type="button"
-            role="tab"
-            aria-selected={mode === 'search'}
+            aria-pressed={mode === 'search'}
             className={`collection-view-mode-button${mode === 'search' ? ' collection-view-mode-button--active' : ''}`}
             onClick={handleSwitchToSearch}
           >
@@ -354,8 +365,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
           </button>
           <button
             type="button"
-            role="tab"
-            aria-selected={mode === 'add'}
+            aria-pressed={mode === 'add'}
             className={`collection-view-mode-button${mode === 'add' ? ' collection-view-mode-button--active' : ''}`}
             onClick={handleSwitchToAdd}
           >
@@ -370,13 +380,20 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
           onSubmit={handleFormSubmit}
           onKeyDown={handleFormKeyDown}
         >
+          {fieldDefs.length === 0 && (
+            <p className="collection-view-empty">
+              This collection has no fields defined yet. You can still add an item using notes
+              below.
+            </p>
+          )}
+
           {fieldDefs.map((fieldDef, index) => (
             <div className="collection-view-add-field" key={fieldDef.name}>
-              <label className="collection-view-add-label" htmlFor={`add-field-${fieldDef.name}`}>
+              <label className="collection-view-add-label" htmlFor={`add-field-${index}`}>
                 {fieldDef.name}
               </label>
               <input
-                id={`add-field-${fieldDef.name}`}
+                id={`add-field-${index}`}
                 type={fieldDef.type === 'number' ? 'number' : 'text'}
                 className="collection-view-add-input"
                 value={form.fields[fieldDef.name] ?? ''}
@@ -562,7 +579,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
                             <button
                               type="button"
                               className="collection-view-item-delete-cancel-button"
-                              onClick={() => setDeleteConfirmId(null)}
+                              onClick={handleCancelDelete}
                               disabled={deletingId === item.id}
                             >
                               Cancel

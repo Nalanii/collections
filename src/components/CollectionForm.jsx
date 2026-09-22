@@ -30,7 +30,10 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
 
   const trimmedName = name.trim()
   const validFieldDefs = fieldDefs.filter((fieldDef) => fieldDef.name.trim() !== '')
-  const isValid = trimmedName !== '' && emoji !== '' && validFieldDefs.length > 0
+  const trimmedFieldNames = validFieldDefs.map((fieldDef) => fieldDef.name.trim())
+  const hasDuplicateFieldNames = new Set(trimmedFieldNames).size !== trimmedFieldNames.length
+  const isValid =
+    trimmedName !== '' && emoji !== '' && validFieldDefs.length > 0 && !hasDuplicateFieldNames
 
   function handleFieldNameChange(key, value) {
     setFieldDefs((rows) =>
@@ -78,6 +81,7 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
   const showNameError = nameTouched && trimmedName === ''
   const showEmojiError = emojiTouched && emoji === ''
   const showFieldsError = fieldsTouched && validFieldDefs.length === 0
+  const showDuplicateFieldsError = fieldsTouched && validFieldDefs.length > 0 && hasDuplicateFieldNames
 
   return (
     <form className="collection-form" onSubmit={handleSubmit} noValidate>
@@ -168,6 +172,9 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
         </button>
         {showFieldsError && (
           <p className="collection-form-error">Add at least one field with a name.</p>
+        )}
+        {showDuplicateFieldsError && (
+          <p className="collection-form-error">Field names must be unique.</p>
         )}
       </div>
 
