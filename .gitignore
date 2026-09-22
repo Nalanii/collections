@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Scratch files
+issue-body.md
+docs/superpowers/plans/
