@@ -10,7 +10,8 @@
   --color-accent-purple: #49326b;
   --color-border: #e8e4da;
   --radius-md: 12px;
-  --font-family-base: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-family-base: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto,
+    sans-serif;
 }
 
 * {
@@ -36,4 +37,9 @@ body {
 
 button {
   font-family: inherit;
+}
+
+::selection {
+  background-color: var(--color-accent);
+  color: #ffffff;
 }

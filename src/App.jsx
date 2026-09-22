@@ -2,6 +2,8 @@ import { useState } from 'react'
 import './App.css'
 import { Admin } from './components/Admin'
 import { CollectionView } from './components/CollectionView'
+import { DecorBackground } from './components/DecorBackground'
+import { Header } from './components/Header'
 import { Home } from './components/Home'
 import { SignIn } from './components/SignIn'
 import { useAuth } from './hooks/useAuth'
@@ -22,6 +24,11 @@ function App() {
         <SignIn />
       </div>
     )
+  }
+
+  function goHome() {
+    setAdminCollectionId(undefined)
+    setOpenCollectionId(null)
   }
 
   const showAdmin = adminCollectionId !== undefined
@@ -57,15 +64,22 @@ function App() {
     )
   }
 
+  const showHome = !showAdmin && !showCollectionView
+
   return (
     <div className="app-shell">
-      <header className="app-header">
-        <h1>Collections</h1>
-        <button type="button" className="sign-out-button" onClick={signOutUser}>
-          Sign out
-        </button>
-      </header>
-      <main className="app-main">{content}</main>
+      <Header
+        onLogoClick={goHome}
+        action={
+          <button type="button" className="header-action-button" onClick={signOutUser}>
+            Sign out
+          </button>
+        }
+      />
+      <div className={`app-content${showHome ? ' decor-host' : ''}`}>
+        {showHome && <DecorBackground />}
+        <main className="app-main">{content}</main>
+      </div>
     </div>
   )
 }

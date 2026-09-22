@@ -1,0 +1,44 @@
+.app-header {
+  background-color: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.app-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.app-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: default;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+
+button.app-header-brand {
+  cursor: pointer;
+}
+
+.app-header-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+}
+
+.app-header-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-primary-dark);
+}
