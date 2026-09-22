@@ -88,6 +88,34 @@ This builds the app and deploys Hosting + Firestore rules/indexes to the
 `collections-tracker-nls` Firebase project. Requires the Firebase CLI
 (`npm install -g firebase-tools`) and being logged in (`firebase login`).
 
+## CI/CD
+
+[`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml) runs on every
+push and pull request targeting `main`:
+
+- **Test job** (push + PR): `npm ci`, `npm run lint`, `npm run test:rules`
+  (Firestore emulator, needs Java — provisioned via `actions/setup-java`),
+  `npm run build`.
+- **Deploy job** (push to `main` only, after the test job passes): builds and
+  deploys Hosting + Firestore rules/indexes to `collections-tracker-nls`,
+  same as `npm run deploy`.
+
+### Deploy secret
+
+The deploy job authenticates with a Firebase service account stored in the
+repo secret `FIREBASE_SERVICE_ACCOUNT`. To set it up (or rotate it):
+
+1. In the [Firebase console](https://console.firebase.google.com/project/collections-tracker-nls/settings/serviceaccounts/adminsdk),
+   generate a new private key for `collections-tracker-nls` and download the
+   JSON file.
+2. Add it as a GitHub Actions secret:
+   ```bash
+   gh secret set FIREBASE_SERVICE_ACCOUNT -R Nalanii/collections < path/to/downloaded-key.json
+   ```
+   (or paste its contents into **Settings → Secrets and variables → Actions**
+   on GitHub).
+3. Delete the downloaded JSON file locally once it's set.
+
 ## Scripts
 
 | Script | Description |
