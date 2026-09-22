@@ -56,6 +56,18 @@ describe('searchItems', () => {
     expect(result).toEqual([])
   })
 
+  it('does not return unrelated items for a short query with scattered character overlap', () => {
+    const movieFieldDefs = [{ name: 'Title', type: 'text' }]
+    const movies = [
+      { id: 'm1', status: 'have', notes: '', fields: { Title: 'Matrix' } },
+      { id: 'm2', status: 'have', notes: '', fields: { Title: 'Matrix Reloaded' } },
+      { id: 'm3', status: 'have', notes: '', fields: { Title: 'The Shawshank Redemption' } },
+    ]
+
+    const result = searchItems(movies, movieFieldDefs, 'matr')
+    expect(result.map((item) => item.id).sort()).toEqual(['m1', 'm2'])
+  })
+
   it('matches a field whose name contains a literal dot', () => {
     const dottedFieldDefs = [...fieldDefs, { name: 'Cat. No.', type: 'text' }]
     const dottedItems = [

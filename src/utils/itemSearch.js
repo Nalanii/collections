@@ -1,8 +1,7 @@
 import Fuse from 'fuse.js'
 
 const FUSE_OPTIONS = {
-  threshold: 0.4,
-  ignoreLocation: true,
+  threshold: 0.3,
   minMatchCharLength: 1,
 }
 
