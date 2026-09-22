@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { Select } from './Select'
 import './CollectionForm.css'
 
 const EMOJI_OPTIONS = [
@@ -137,18 +138,13 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
                   }
                 }}
               />
-              <select
-                className="collection-form-select"
+              <Select
+                className="field-def-type-select"
+                options={FIELD_TYPES}
                 value={row.type}
-                onChange={(event) => handleFieldTypeChange(row._key, event.target.value)}
-                aria-label="Field type"
-              >
-                {FIELD_TYPES.map((fieldType) => (
-                  <option key={fieldType.value} value={fieldType.value}>
-                    {fieldType.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(newValue) => handleFieldTypeChange(row._key, newValue)}
+                ariaLabel="Field type"
+              />
               <button
                 type="button"
                 className="field-def-remove-button"

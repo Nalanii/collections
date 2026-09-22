@@ -96,8 +96,12 @@
   min-width: 0;
 }
 
-.field-def-row .collection-form-select {
-  padding-right: 1.75rem;
+.field-def-row .field-def-type-select {
+  width: 8.5rem;
+}
+
+.field-def-row .field-def-type-select .select-trigger {
+  padding: 0.6rem 1.75rem 0.6rem 0.6rem;
   background-position: right 0.5rem center;
 }
 
