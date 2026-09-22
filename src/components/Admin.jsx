@@ -12,6 +12,7 @@ import {
 import { createInvite } from '../services/invites'
 import { canWrite, getMemberRole, isViewerRole } from '../utils/permissions'
 import { ReadOnlyBanner } from './ReadOnlyBanner'
+import { Select } from './Select'
 import './Admin.css'
 
 const EMPTY_VALUES = { name: '', emoji: '', fieldDefs: [] }
@@ -264,18 +265,13 @@ export function Admin({ user, collectionId, onDone }) {
               aria-label="Invite email"
               required
             />
-            <select
+            <Select
               className="admin-invite-role-select"
+              options={INVITE_ROLES}
               value={inviteRole}
-              onChange={(event) => setInviteRole(event.target.value)}
-              aria-label="Invite role"
-            >
-              {INVITE_ROLES.map((role) => (
-                <option key={role.value} value={role.value}>
-                  {role.label}
-                </option>
-              ))}
-            </select>
+              onChange={setInviteRole}
+              ariaLabel="Invite role"
+            />
             <button type="submit" className="admin-invite-submit-button" disabled={inviting}>
               {inviting ? 'Sending…' : 'Invite'}
             </button>
