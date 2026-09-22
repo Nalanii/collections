@@ -41,5 +41,14 @@
 }
 
 .app-shell--loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background-color: var(--color-bg);
+}
+
+.app-shell-loading-logo {
+  width: 80px;
+  height: 80px;
+  border-radius: var(--radius-md);
 }

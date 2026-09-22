@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import './App.css'
+import logo from './assets/logo.png'
 import { Admin } from './components/Admin'
 import { CollectionView } from './components/CollectionView'
 import { DecorBackground } from './components/DecorBackground'
@@ -15,7 +16,11 @@ function App() {
   const [openCollectionId, setOpenCollectionId] = useState(null)
 
   if (initializing) {
-    return <div className="app-shell app-shell--loading" />
+    return (
+      <div className="app-shell app-shell--loading">
+        <img className="app-shell-loading-logo" src={logo} alt="" width="80" height="80" />
+      </div>
+    )
   }
 
   if (!user) {
