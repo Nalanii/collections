@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import './Select.css'
 
 export function Select({ options, value, onChange, ariaLabel, className = '' }) {
@@ -8,7 +8,7 @@ export function Select({ options, value, onChange, ariaLabel, className = '' }) 
   const optionRefs = useRef([])
   const listRef = useRef(null)
   const buttonRef = useRef(null)
-  const isFirstRender = useRef(true)
+  const listboxId = useId()
 
   const selectedIndex = options.findIndex((option) => option.value === value)
   const selectedOption = options[selectedIndex]
@@ -42,14 +42,8 @@ export function Select({ options, value, onChange, ariaLabel, className = '' }) 
   }, [open, highlightedIndex])
 
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false
-      return
-    }
-    if (open && listRef.current) {
-      listRef.current.focus()
-    } else if (!open && buttonRef.current) {
-      buttonRef.current.focus()
+    if (open) {
+      listRef.current?.focus()
     }
   }, [open])
 
@@ -67,6 +61,7 @@ export function Select({ options, value, onChange, ariaLabel, className = '' }) 
       onChange(option.value)
     }
     closeList()
+    buttonRef.current?.focus()
   }
 
   function handleButtonKeyDown(event) {
@@ -89,6 +84,7 @@ export function Select({ options, value, onChange, ariaLabel, className = '' }) 
     } else if (event.key === 'Escape') {
       event.preventDefault()
       closeList()
+      buttonRef.current?.focus()
     } else if (event.key === 'Tab') {
       closeList()
     }
@@ -102,9 +98,14 @@ export function Select({ options, value, onChange, ariaLabel, className = '' }) 
         className="select-trigger"
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={ariaLabel}
+        aria-label={`${ariaLabel}: ${selectedOption ? selectedOption.label : ''}`}
         onClick={() => (open ? closeList() : openList())}
         onKeyDown={handleButtonKeyDown}
+        onKeyUp={(event) => {
+          if (event.key === ' ') {
+            event.preventDefault()
+          }
+        }}
       >
         <span className="select-trigger-label">{selectedOption ? selectedOption.label : ''}</span>
       </button>
@@ -114,12 +115,14 @@ export function Select({ options, value, onChange, ariaLabel, className = '' }) 
           className="select-listbox"
           role="listbox"
           aria-label={ariaLabel}
+          aria-activedescendant={open && highlightedIndex >= 0 ? `${listboxId}-option-${highlightedIndex}` : undefined}
           onKeyDown={handleListKeyDown}
           tabIndex={-1}
         >
           {options.map((option, index) => (
             <li
               key={option.value}
+              id={`${listboxId}-option-${index}`}
               ref={(node) => {
                 optionRefs.current[index] = node
               }}

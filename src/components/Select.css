@@ -43,7 +43,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background-color: var(--color-surface);
-  box-shadow: 0 4px 16px rgba(30, 34, 41, 0.12);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--color-text) 12%, transparent);
   max-height: 12rem;
   overflow-y: auto;
 }
