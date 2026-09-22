@@ -521,26 +521,44 @@ describe('owner bootstrap (self-create first members doc)', () => {
   beforeEach_seed();
 
   it('the true owner can bootstrap their own members doc when none exists yet', async () => {
-    const db = testEnv.authenticatedContext('bootstrap-owner-uid').firestore();
+    const db = testEnv
+      .authenticatedContext('bootstrap-owner-uid', { email: 'bootstrap-owner@example.com' })
+      .firestore();
     await assertSucceeds(
       db
         .collection('collections')
         .doc('col-bootstrap')
         .collection('members')
         .doc('bootstrap-owner-uid')
-        .set({ role: 'owner' })
+        .set({ role: 'owner', email: 'bootstrap-owner@example.com' })
     );
   });
 
   it('a non-owner cannot bootstrap themselves as owner even when no members doc exists', async () => {
-    const db = testEnv.authenticatedContext('not-the-owner-uid').firestore();
+    const db = testEnv
+      .authenticatedContext('not-the-owner-uid', { email: 'not-the-owner@example.com' })
+      .firestore();
     await assertFails(
       db
         .collection('collections')
         .doc('col-bootstrap')
         .collection('members')
         .doc('not-the-owner-uid')
-        .set({ role: 'owner' })
+        .set({ role: 'owner', email: 'not-the-owner@example.com' })
+    );
+  });
+
+  it('cannot bootstrap their own members doc with an email not matching their auth token', async () => {
+    const db = testEnv
+      .authenticatedContext('bootstrap-owner-uid', { email: 'bootstrap-owner@example.com' })
+      .firestore();
+    await assertFails(
+      db
+        .collection('collections')
+        .doc('col-bootstrap')
+        .collection('members')
+        .doc('bootstrap-owner-uid')
+        .set({ role: 'owner', email: 'spoofed@example.com' })
     );
   });
 
@@ -556,7 +574,9 @@ describe('owner bootstrap (self-create first members doc)', () => {
     // get()/exists() calls only see already-committed state. Awaiting the
     // first write's commit before issuing the second is what lets the
     // second write's rule evaluation see the collections doc.
-    const db = testEnv.authenticatedContext('new-owner-uid').firestore();
+    const db = testEnv
+      .authenticatedContext('new-owner-uid', { email: 'new-owner@example.com' })
+      .firestore();
     const collectionRef = db.collection('collections').doc('col-new');
     const memberRef = collectionRef.collection('members').doc('new-owner-uid');
 
@@ -568,7 +588,7 @@ describe('owner bootstrap (self-create first members doc)', () => {
         fieldDefs: [],
       })
     );
-    await assertSucceeds(memberRef.set({ role: 'owner' }));
+    await assertSucceeds(memberRef.set({ role: 'owner', email: 'new-owner@example.com' }));
   });
 
   it('the same create attempted as a single writeBatch (both docs, nothing pre-seeded) fails', async () => {
@@ -612,7 +632,7 @@ describe('invite acceptance', () => {
         .doc('col1')
         .collection('members')
         .doc('invitee-uid')
-        .set({ role: 'editor' })
+        .set({ role: 'editor', email: 'invited@example.com' })
     );
   });
 
@@ -626,7 +646,21 @@ describe('invite acceptance', () => {
         .doc('col1')
         .collection('members')
         .doc('uninvited-uid')
-        .set({ role: 'editor' })
+        .set({ role: 'editor', email: 'uninvited@example.com' })
+    );
+  });
+
+  it('cannot accept an invite while writing a spoofed email that does not match their auth token', async () => {
+    const db = testEnv
+      .authenticatedContext('invitee-uid', { email: 'invited@example.com' })
+      .firestore();
+    await assertFails(
+      db
+        .collection('collections')
+        .doc('col1')
+        .collection('members')
+        .doc('invitee-uid')
+        .set({ role: 'editor', email: 'spoofed@example.com' })
     );
   });
 });
