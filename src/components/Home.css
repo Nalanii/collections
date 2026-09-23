@@ -1,6 +1,5 @@
 .home-screen {
   position: relative;
-  min-height: calc(100vh - 8rem);
   padding-bottom: 5rem;
 }
 
