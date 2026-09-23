@@ -3,26 +3,12 @@ import { subscribeToCollection, subscribeToMembers } from '../services/collectio
 import { addItem, deleteItem, subscribeToItems, updateItem } from '../services/items'
 import { searchItems } from '../utils/itemSearch'
 import { canWrite, getMemberRole, isViewerRole } from '../utils/permissions'
+import { BackButton, BackChevronIcon } from './BackButton'
 import { ConfirmDialog } from './ConfirmDialog'
 import { ReadOnlyBanner } from './ReadOnlyBanner'
 import './CollectionView.css'
 
 const EMPTY_FIELD_DEFS = []
-
-function BackChevronIcon() {
-  return (
-    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-      <path
-        d="M10 3.5L5.5 8l4.5 4.5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
 
 function PlusIcon() {
   return (
@@ -191,7 +177,6 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
   function isAddFormDirty() {
     if (mode !== 'add') {
       return false
-    if (mode === 'add') return
     }
     if (form.status !== initialForm.status || form.notes !== initialForm.notes) {
       return true
@@ -206,6 +191,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
   }
 
   function handleSwitchToAdd() {
+    if (mode === 'add') return
     const emptyState = emptyFormState()
     setEditingItemId(null)
     setForm(emptyState)
@@ -368,11 +354,9 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
 
   if (collectionError) {
     return (
-      <div className="collection-view-screen">
-        <p className="collection-view-error">{collectionError}</p>
-        <button type="button" className="collection-view-back-button" onClick={onBack}>
-          <BackChevronIcon /> Back
-        </button>
+      <div>
+        <p className="not-found-message">{collectionError}</p>
+        <BackButton onClick={onBack} />
       </div>
     )
   }
@@ -382,11 +366,9 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
       return null
     }
     return (
-      <div className="collection-view-screen">
-        <p className="collection-view-error">This collection could not be found.</p>
-        <button type="button" className="collection-view-back-button" onClick={onBack}>
-          <BackChevronIcon /> Back
-        </button>
+      <div>
+        <p className="not-found-message">This collection could not be found.</p>
+        <BackButton onClick={onBack} />
       </div>
     )
   }
@@ -396,7 +378,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
       <div className="collection-view-header">
         <button
           type="button"
-          className="collection-view-back-button"
+          className="back-button"
           onClick={handleBackClick}
           aria-label="Back to collections"
         >

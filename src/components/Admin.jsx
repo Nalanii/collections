@@ -12,6 +12,7 @@ import {
 import { createInvite } from '../services/invites'
 import { canWrite, getMemberRole, isViewerRole } from '../utils/permissions'
 import { ReadOnlyBanner } from './ReadOnlyBanner'
+import { BackButton } from './BackButton'
 import { Select } from './Select'
 import './Admin.css'
 
@@ -189,22 +190,18 @@ export function Admin({ user, collectionId, onDone }) {
 
   if (isEditMode && loadError) {
     return (
-      <div className="admin-screen">
-        <p className="admin-error">{loadError}</p>
-        <button type="button" className="admin-back-button" onClick={onDone}>
-          Back
-        </button>
+      <div>
+        <p className="not-found-message">{loadError}</p>
+        <BackButton onClick={onDone} />
       </div>
     )
   }
 
   if (isEditMode && collection == null) {
     return (
-      <div className="admin-screen">
-        <p className="admin-error">This collection could not be found.</p>
-        <button type="button" className="admin-back-button" onClick={onDone}>
-          Back
-        </button>
+      <div>
+        <p className="not-found-message">This collection could not be found.</p>
+        <BackButton onClick={onDone} />
       </div>
     )
   }
@@ -244,9 +241,7 @@ export function Admin({ user, collectionId, onDone }) {
               </li>
             ))}
           </ul>
-          <button type="button" className="admin-back-button" onClick={onDone}>
-            Back
-          </button>
+          <BackButton onClick={onDone} />
         </div>
       )}
 
