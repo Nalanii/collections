@@ -9,6 +9,15 @@
   --color-accent-green: #387e3f;
   --color-accent-purple: #49326b;
   --color-border: #e8e4da;
+  --hover-tint: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
+  --hover-tint-ghost: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  --hover-border: var(--color-primary);
+  --hover-border-destructive: var(--color-primary-dark);
+  --hover-primary-bg: var(--color-primary-dark);
+  --hover-destructive-bg: color-mix(in srgb, var(--color-primary-dark) 82%, #000000);
+  --hover-transition:
+    background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease,
+    box-shadow 0.15s ease;
   --radius-md: 12px;
   --font-family-base: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto,
     sans-serif;
@@ -42,4 +51,94 @@ button {
 ::selection {
   background-color: var(--color-accent);
   color: #ffffff;
+}
+
+/* ---- Shared button hover treatments (no size/border-width changes) ---- */
+
+/* Transition for every hoverable button */
+.collection-card,
+.home-fab,
+.emoji-grid-option,
+.field-def-add-button,
+.field-def-remove-button,
+.collection-form-cancel-button,
+.collection-form-submit-button,
+.collection-view-manage-button,
+.collection-view-clear-button,
+.collection-view-tab,
+.collection-view-mode-button,
+.collection-view-save-button,
+.collection-view-cancel-edit-button,
+.collection-view-item-edit-button,
+.collection-view-item-delete-button,
+.collection-view-item-delete-confirm-button,
+.collection-view-item-delete-cancel-button,
+.admin-invite-submit-button,
+.admin-delete-button,
+.admin-delete-confirm-button,
+.admin-delete-cancel-button,
+.admin-member-action-button,
+.back-button,
+.confirm-dialog-cancel-button,
+.confirm-dialog-confirm-button,
+.pending-invite-accept-button,
+.pending-invite-decline-button,
+.select-trigger {
+  transition: var(--hover-transition);
+}
+
+/* Primary (filled orange): darken */
+.home-fab:hover:not(:disabled),
+.collection-form-submit-button:hover:not(:disabled),
+.collection-view-save-button:hover:not(:disabled),
+.collection-view-tab--active:hover:not(:disabled),
+.collection-view-mode-button--active:hover:not(:disabled),
+.admin-invite-submit-button:hover:not(:disabled),
+.pending-invite-accept-button:hover:not(:disabled) {
+  background-color: var(--hover-primary-bg);
+  border-color: var(--hover-primary-bg);
+}
+
+/* Destructive (filled): darken further */
+.admin-delete-confirm-button:hover:not(:disabled),
+.confirm-dialog-confirm-button:hover:not(:disabled),
+.collection-view-item-delete-confirm-button:hover:not(:disabled) {
+  background-color: var(--hover-destructive-bg);
+  border-color: var(--hover-destructive-bg);
+}
+
+/* Secondary / cancel / neutral outlined and surface buttons, cards, select: tint + accent border */
+.collection-card:hover:not(:disabled),
+.emoji-grid-option:not(.selected):hover:not(:disabled),
+.field-def-add-button:hover:not(:disabled),
+.collection-form-cancel-button:hover:not(:disabled),
+.collection-view-manage-button:hover:not(:disabled),
+.collection-view-tab:not(.collection-view-tab--active):hover:not(:disabled),
+.collection-view-mode-button:not(.collection-view-mode-button--active):hover:not(:disabled),
+.collection-view-cancel-edit-button:hover:not(:disabled),
+.collection-view-item-edit-button:hover:not(:disabled),
+.collection-view-item-delete-cancel-button:hover:not(:disabled),
+.admin-delete-cancel-button:hover:not(:disabled),
+.back-button:hover:not(:disabled),
+.confirm-dialog-cancel-button:hover:not(:disabled),
+.pending-invite-decline-button:hover:not(:disabled),
+.select-trigger:hover:not(:disabled) {
+  background-color: var(--hover-tint);
+  border-color: var(--hover-border);
+}
+
+/* Destructive outlined: tint + stronger border */
+.field-def-remove-button:hover:not(:disabled),
+.collection-view-item-delete-button:hover:not(:disabled),
+.admin-delete-button:hover:not(:disabled),
+.admin-member-action-button:hover:not(:disabled) {
+  background-color: var(--hover-tint);
+  border-color: var(--hover-border-destructive);
+  color: var(--color-primary-dark);
+}
+
+/* Borderless ghost icon button */
+.collection-view-clear-button:hover:not(:disabled) {
+  background-color: var(--hover-tint-ghost);
+  color: var(--color-primary-dark);
 }

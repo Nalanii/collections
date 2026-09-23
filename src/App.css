@@ -19,8 +19,8 @@
 }
 
 .header-action-button:hover:not(:disabled) {
-  background-color: var(--color-surface);
-  border-color: var(--color-primary);
+  background-color: var(--hover-tint);
+  border-color: var(--hover-border);
   color: var(--color-primary-dark);
 }
 
