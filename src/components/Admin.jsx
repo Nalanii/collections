@@ -14,6 +14,7 @@ import { canWrite, getMemberRole, isViewerRole } from '../utils/permissions'
 import { ReadOnlyBanner } from './ReadOnlyBanner'
 import { BackButton } from './BackButton'
 import { Select } from './Select'
+import { Spinner } from './Spinner'
 import './Admin.css'
 
 const EMPTY_VALUES = { name: '', emoji: '', fieldDefs: [] }
@@ -181,7 +182,7 @@ export function Admin({ user, collectionId, onDone }) {
   if (isEditMode && loading) {
     return (
       <div className="admin-screen">
-        <p className="admin-loading">Loading collection…</p>
+        <Spinner label="Loading collection" />
       </div>
     )
   }
@@ -189,7 +190,7 @@ export function Admin({ user, collectionId, onDone }) {
   if (isEditMode && members === null) {
     return (
       <div className="admin-screen">
-        <p className="admin-loading">Loading collection…</p>
+        <Spinner label="Loading collection" />
       </div>
     )
   }
@@ -288,7 +289,7 @@ export function Admin({ user, collectionId, onDone }) {
           {membersError && <p className="admin-error">{membersError}</p>}
           {memberActionError && <p className="admin-error">{memberActionError}</p>}
           {members == null ? (
-            <p className="admin-loading">Loading members…</p>
+            <Spinner label="Loading members" />
           ) : (
             <ul className="admin-members-list">
               {members.map((member) => {

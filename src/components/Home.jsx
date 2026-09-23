@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { subscribeToUserCollections } from '../services/collections'
 import { PendingInvites } from './PendingInvites'
+import { Spinner } from './Spinner'
 import './Home.css'
 
 export function Home({ user, onCreateCollection, onOpenCollection = () => {} }) {
@@ -27,7 +28,7 @@ export function Home({ user, onCreateCollection, onOpenCollection = () => {} }) 
     <div className="home-screen">
       <PendingInvites user={user} />
 
-      {loading && <p className="home-loading">Loading your collections…</p>}
+      {loading && <Spinner label="Loading collections" />}
 
       {error && <p className="home-error">{error}</p>}
 
