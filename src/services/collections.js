@@ -92,9 +92,13 @@ export function deleteCollection(collectionId) {
 // error.
 export function subscribeToUserCollections(uid, callback) {
   const membershipsQuery = query(collectionGroup(db, 'members'), where('uid', '==', uid))
-  return onSnapshot(
+  // Each snapshot resolves its collection docs asynchronously, so results can
+  // finish out of order. Only the most recent snapshot's result may be applied.
+  let latestSeq = 0
+  const unsubscribe = onSnapshot(
     membershipsQuery,
     async (snapshot) => {
+      const seq = ++latestSeq
       try {
         const entries = await Promise.all(
           snapshot.docs.map(async (memberSnap) => {
@@ -109,15 +113,22 @@ export function subscribeToUserCollections(uid, callback) {
             }
           })
         )
+        if (seq !== latestSeq) return
         callback(entries.filter((entry) => entry != null))
       } catch (err) {
+        if (seq !== latestSeq) return
         callback([], err)
       }
     },
     (error) => {
+      latestSeq++
       callback([], error)
     }
   )
+  return () => {
+    latestSeq++
+    unsubscribe()
+  }
 }
 
 // `callback` is invoked as `callback(data, error)`. On a successful snapshot,
