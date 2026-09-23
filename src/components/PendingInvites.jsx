@@ -7,9 +7,10 @@ export function PendingInvites({ user }) {
   const [busyKey, setBusyKey] = useState(null)
   const [error, setError] = useState(null)
 
+  const visibleInvites = user.email ? invites : []
+
   useEffect(() => {
     if (!user.email) {
-      setInvites([])
       return
     }
     const unsubscribe = subscribeToUserInvites(user.email, (data, err) => {
@@ -23,7 +24,7 @@ export function PendingInvites({ user }) {
     return unsubscribe
   }, [user.email])
 
-  if (!invites || invites.length === 0) {
+  if (!visibleInvites || visibleInvites.length === 0) {
     return null
   }
 
@@ -60,7 +61,7 @@ export function PendingInvites({ user }) {
       <h2 className="pending-invites-title">Pending invites</h2>
       {error && <p className="pending-invites-error">{error}</p>}
       <ul className="pending-invites-list">
-        {invites.map((invite) => {
+        {visibleInvites.map((invite) => {
           const acceptKey = `${invite.collectionId}:accept`
           const declineKey = `${invite.collectionId}:decline`
           const busy = busyKey === acceptKey || busyKey === declineKey

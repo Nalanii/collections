@@ -5,14 +5,15 @@ import './Home.css'
 
 export function Home({ user, onCreateCollection, onOpenCollection = () => {} }) {
   const [collections, setCollections] = useState(null)
-  const [error, setError] = useState(null)
+  // The error is tagged with the uid it belongs to, so it clears when the user changes.
+  const [errorState, setErrorState] = useState({ uid: null, message: null })
+  const error = errorState.uid === user.uid ? errorState.message : null
 
   useEffect(() => {
-    setError(null)
     const unsubscribe = subscribeToUserCollections(user.uid, (data, err) => {
       if (err) {
         console.error(err)
-        setError('Could not load your collections. Please try again.')
+        setErrorState({ uid: user.uid, message: 'Could not load your collections. Please try again.' })
         return
       }
       setCollections(data)

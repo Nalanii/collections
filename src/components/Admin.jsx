@@ -25,10 +25,14 @@ const INVITE_ROLES = [
 export function Admin({ user, collectionId, onDone }) {
   const isEditMode = collectionId != null
 
-  const [collection, setCollection] = useState(null)
-  const [loading, setLoading] = useState(isEditMode)
+  // Load results are tagged with the collection id they belong to, so results for a
+  // previous collection (or for create mode) read as "still loading".
+  const [loadState, setLoadState] = useState({ id: null, data: null, error: null })
   const [error, setError] = useState(null)
-  const [loadError, setLoadError] = useState(null)
+  const currentLoad = isEditMode && loadState.id === collectionId ? loadState : null
+  const collection = currentLoad?.data ?? null
+  const loading = isEditMode && currentLoad === null
+  const loadError = currentLoad?.error ?? null
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -37,7 +41,8 @@ export function Admin({ user, collectionId, onDone }) {
   const [inviteError, setInviteError] = useState(null)
   const [inviteSuccess, setInviteSuccess] = useState(null)
   const [inviting, setInviting] = useState(false)
-  const [members, setMembers] = useState(null)
+  const [membersData, setMembersData] = useState(null)
+  const members = isEditMode ? membersData : null
   const [membersError, setMembersError] = useState(null)
   const [memberBusyKey, setMemberBusyKey] = useState(null)
   const [memberActionError, setMemberActionError] = useState(null)
@@ -45,39 +50,40 @@ export function Admin({ user, collectionId, onDone }) {
 
   useEffect(() => {
     if (!isEditMode) {
-      setCollection(null)
-      setLoading(false)
       return
     }
 
-    setLoading(true)
-    setLoadError(null)
     const unsubscribe = subscribeToCollection(collectionId, (data, err) => {
       if (err) {
         console.error(err)
-        setLoading(false)
-        setLoadError('Could not load this collection. Please try again.')
+        setLoadState((prev) => ({
+          id: collectionId,
+          data: prev.id === collectionId ? prev.data : null,
+          error: 'Could not load this collection. Please try again.',
+        }))
         return
       }
-      setCollection(data)
-      setLoading(false)
+      setLoadState((prev) => ({
+        id: collectionId,
+        data,
+        error: prev.id === collectionId ? prev.error : null,
+      }))
     })
     return unsubscribe
   }, [collectionId, isEditMode])
 
   useEffect(() => {
     if (!isEditMode) {
-      setMembers(null)
       return
     }
     const unsubscribe = subscribeToMembers(collectionId, (data, err) => {
       if (err) {
         console.error(err)
         setMembersError('Could not load members.')
-        setMembers(data)
+        setMembersData(data)
         return
       }
-      setMembers(data)
+      setMembersData(data)
     })
     return unsubscribe
   }, [collectionId, isEditMode])

@@ -9,6 +9,9 @@ import { ReadOnlyBanner } from './ReadOnlyBanner'
 import './CollectionView.css'
 
 const EMPTY_FIELD_DEFS = []
+const EMPTY_COLLECTION_STATE = { id: null, data: null, loaded: false, error: null }
+const EMPTY_ITEMS_STATE = { id: null, data: null, error: null }
+const EMPTY_MEMBERS_STATE = { id: null, data: null }
 
 function PlusIcon() {
   return (
@@ -75,11 +78,11 @@ function emptyFormState() {
 }
 
 export function CollectionView({ collectionId, user, onBack, onManage = () => {} }) {
-  const [collectionData, setCollectionData] = useState(null)
-  const [collectionLoaded, setCollectionLoaded] = useState(false)
-  const [collectionError, setCollectionError] = useState(null)
-  const [items, setItems] = useState(null)
-  const [itemsError, setItemsError] = useState(null)
+  // Subscription results are tagged with the collection id they belong to, so
+  // results for a previous collection read as "not loaded yet" after a switch.
+  const [collectionState, setCollectionState] = useState(EMPTY_COLLECTION_STATE)
+  const [itemsState, setItemsState] = useState(EMPTY_ITEMS_STATE)
+  const [membersState, setMembersState] = useState(EMPTY_MEMBERS_STATE)
   const [query, setQuery] = useState('')
   const [activeTab, setActiveTab] = useState('all')
 
@@ -94,47 +97,66 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
   const [deleteConfirmId, setDeleteConfirmId] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
   const [deleteError, setDeleteError] = useState(null)
-  const [members, setMembers] = useState(null)
   const firstFieldRef = useRef(null)
   const savingRef = useRef(false)
 
+  const currentCollectionState =
+    collectionState.id === collectionId ? collectionState : EMPTY_COLLECTION_STATE
+  const collectionData = currentCollectionState.data
+  const collectionLoaded = currentCollectionState.loaded
+  const collectionError = currentCollectionState.error
+  const currentItemsState = itemsState.id === collectionId ? itemsState : EMPTY_ITEMS_STATE
+  const items = currentItemsState.data
+  const itemsError = currentItemsState.error
+  const members = membersState.id === collectionId ? membersState.data : null
+
   useEffect(() => {
-    setCollectionData(null)
-    setCollectionError(null)
-    setCollectionLoaded(false)
     const unsubscribe = subscribeToCollection(collectionId, (data, err) => {
       if (err) {
         console.error(err)
-        setCollectionError('Could not load this collection. Please try again.')
+        setCollectionState((prev) => ({
+          ...(prev.id === collectionId ? prev : EMPTY_COLLECTION_STATE),
+          id: collectionId,
+          error: 'Could not load this collection. Please try again.',
+        }))
         return
       }
-      setCollectionData(data)
-      setCollectionLoaded(true)
+      setCollectionState((prev) => ({
+        ...(prev.id === collectionId ? prev : EMPTY_COLLECTION_STATE),
+        id: collectionId,
+        data,
+        loaded: true,
+      }))
     })
     return unsubscribe
   }, [collectionId])
 
   useEffect(() => {
-    setItems(null)
-    setItemsError(null)
     const unsubscribe = subscribeToItems(collectionId, (data, err) => {
       if (err) {
         console.error(err)
-        setItemsError('Could not load items. Please try again.')
+        setItemsState((prev) => ({
+          ...(prev.id === collectionId ? prev : EMPTY_ITEMS_STATE),
+          id: collectionId,
+          error: 'Could not load items. Please try again.',
+        }))
         return
       }
-      setItems(data)
+      setItemsState((prev) => ({
+        ...(prev.id === collectionId ? prev : EMPTY_ITEMS_STATE),
+        id: collectionId,
+        data,
+      }))
     })
     return unsubscribe
   }, [collectionId])
 
   useEffect(() => {
-    setMembers(null)
     const unsubscribe = subscribeToMembers(collectionId, (data, err) => {
       if (err) {
         console.error(err)
       }
-      setMembers(data)
+      setMembersState({ id: collectionId, data })
     })
     return unsubscribe
   }, [collectionId])
@@ -151,13 +173,12 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
   const isViewer = rolesLoaded && isViewerRole(myRole)
   const showWriteControls = rolesLoaded && canWrite(myRole)
 
-  useEffect(() => {
-    if (isViewer && mode !== 'search') {
-      setMode('search')
-      setEditingItemId(null)
-      setFormError(null)
-    }
-  }, [isViewer, mode])
+  // Viewers can't write: drop back to search mode (adjusted during render, not in an effect).
+  if (isViewer && mode !== 'search') {
+    setMode('search')
+    setEditingItemId(null)
+    setFormError(null)
+  }
 
   const tabItems = useMemo(() => {
     if (items == null) {

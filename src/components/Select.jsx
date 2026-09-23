@@ -4,6 +4,7 @@ import './Select.css'
 export function Select({ options, value, onChange, ariaLabel, className = '' }) {
   const [open, setOpen] = useState(false)
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
+  const [syncedHighlightKey, setSyncedHighlightKey] = useState(null)
   const rootRef = useRef(null)
   const optionRefs = useRef([])
   const listRef = useRef(null)
@@ -28,12 +29,15 @@ export function Select({ options, value, onChange, ariaLabel, className = '' }) 
     return () => document.removeEventListener('mousedown', handlePointerDown)
   }, [open])
 
-  useEffect(() => {
+  // Reset the highlight whenever the list opens or the selection changes while open
+  // (adjusted during render, not in an effect).
+  const highlightSyncKey = open ? selectedIndex : null
+  if (syncedHighlightKey !== highlightSyncKey) {
+    setSyncedHighlightKey(highlightSyncKey)
     if (open) {
-      const index = selectedIndex === -1 ? 0 : selectedIndex
-      setHighlightedIndex(index)
+      setHighlightedIndex(selectedIndex === -1 ? 0 : selectedIndex)
     }
-  }, [open, selectedIndex])
+  }
 
   useEffect(() => {
     if (open && optionRefs.current[highlightedIndex]) {
