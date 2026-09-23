@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import './App.css'
 import logo from './assets/logo.png'
 import { Admin } from './components/Admin'
@@ -8,12 +7,12 @@ import { Header } from './components/Header'
 import { Home } from './components/Home'
 import { SignIn } from './components/SignIn'
 import { useAuth } from './hooks/useAuth'
+import { useRoute } from './hooks/useRoute'
 import { signOutUser } from './services/auth'
 
 function App() {
   const { user, initializing } = useAuth()
-  const [adminCollectionId, setAdminCollectionId] = useState(undefined)
-  const [openCollectionId, setOpenCollectionId] = useState(null)
+  const [route, navigate] = useRoute()
 
   if (initializing) {
     return (
@@ -32,39 +31,38 @@ function App() {
   }
 
   function goHome() {
-    setAdminCollectionId(undefined)
-    setOpenCollectionId(null)
+    navigate('/')
   }
 
-  const showAdmin = adminCollectionId !== undefined
-  const showCollectionView = !showAdmin && openCollectionId !== null
+  const showAdmin = route.view === 'admin'
+  const showCollectionView = route.view === 'collection'
 
   let content
   if (showAdmin) {
     content = (
       <Admin
-        key={adminCollectionId ?? 'new'}
+        key={route.collectionId ?? 'new'}
         user={user}
-        collectionId={adminCollectionId}
-        onDone={() => setAdminCollectionId(undefined)}
+        collectionId={route.collectionId ?? undefined}
+        onDone={goHome}
       />
     )
   } else if (showCollectionView) {
     content = (
       <CollectionView
-        key={openCollectionId}
-        collectionId={openCollectionId}
+        key={route.collectionId}
+        collectionId={route.collectionId}
         user={user}
-        onBack={() => setOpenCollectionId(null)}
-        onManage={(collectionId) => setAdminCollectionId(collectionId)}
+        onBack={goHome}
+        onManage={(collectionId) => navigate(`/admin/${encodeURIComponent(collectionId)}`)}
       />
     )
   } else {
     content = (
       <Home
         user={user}
-        onCreateCollection={() => setAdminCollectionId(null)}
-        onOpenCollection={(collectionId) => setOpenCollectionId(collectionId)}
+        onCreateCollection={() => navigate('/admin')}
+        onOpenCollection={(collectionId) => navigate(`/collections/${encodeURIComponent(collectionId)}`)}
       />
     )
   }
