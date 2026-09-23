@@ -3,6 +3,7 @@ import { subscribeToCollection, subscribeToMembers } from '../services/collectio
 import { addItem, deleteItem, subscribeToItems, updateItem } from '../services/items'
 import { searchItems } from '../utils/itemSearch'
 import { canWrite, getMemberRole, isViewerRole } from '../utils/permissions'
+import { ConfirmDialog } from './ConfirmDialog'
 import { ReadOnlyBanner } from './ReadOnlyBanner'
 import './CollectionView.css'
 
@@ -98,6 +99,8 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
 
   const [mode, setMode] = useState('search')
   const [form, setForm] = useState(emptyFormState)
+  const [initialForm, setInitialForm] = useState(emptyFormState)
+  const [pendingDiscardAction, setPendingDiscardAction] = useState(null)
   const [editingItemId, setEditingItemId] = useState(null)
   const [formError, setFormError] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -185,9 +188,27 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
     [tabItems, fieldDefs, query]
   )
 
+  function isAddFormDirty() {
+    if (mode !== 'add') {
+      return false
+    }
+    if (form.status !== initialForm.status || form.notes !== initialForm.notes) {
+      return true
+    }
+    const fieldNames = new Set([...Object.keys(form.fields), ...Object.keys(initialForm.fields)])
+    for (const fieldName of fieldNames) {
+      if ((form.fields[fieldName] ?? '') !== (initialForm.fields[fieldName] ?? '')) {
+        return true
+      }
+    }
+    return false
+  }
+
   function handleSwitchToAdd() {
+    const emptyState = emptyFormState()
     setEditingItemId(null)
-    setForm(emptyFormState())
+    setForm(emptyState)
+    setInitialForm(emptyState)
     setFormError(null)
     setMode('add')
     setFocusToken((token) => token + 1)
@@ -200,12 +221,20 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
     setMode('search')
   }
 
+  function handleSwitchToSearchTab() {
+    if (isAddFormDirty()) {
+      setPendingDiscardAction('search')
+      return
+    }
+    handleSwitchToSearch()
+  }
+
   function handleFieldChange(fieldName, value) {
     setForm((prev) => ({ ...prev, fields: { ...prev.fields, [fieldName]: value } }))
   }
 
   function handleEditClick(item) {
-    setForm({
+    const nextForm = {
       fields: Object.fromEntries(
         fieldDefs.map((fieldDef) => [
           fieldDef.name,
@@ -215,7 +244,9 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
       originalFields: item.fields ?? {},
       status: item.status,
       notes: item.notes ?? '',
-    })
+    }
+    setForm(nextForm)
+    setInitialForm(nextForm)
     setEditingItemId(item.id)
     setFormError(null)
     setMode('add')
@@ -223,10 +254,41 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
   }
 
   function handleCancelEdit() {
+    if (isAddFormDirty()) {
+      setPendingDiscardAction('cancelEdit')
+      return
+    }
     setEditingItemId(null)
     setForm(emptyFormState())
     setFormError(null)
     setMode('search')
+  }
+
+  function handleBackClick() {
+    if (isAddFormDirty()) {
+      setPendingDiscardAction('back')
+      return
+    }
+    onBack()
+  }
+
+  function handleConfirmDiscard() {
+    const action = pendingDiscardAction
+    setPendingDiscardAction(null)
+    if (action === 'back') {
+      onBack()
+    } else if (action === 'search') {
+      handleSwitchToSearch()
+    } else if (action === 'cancelEdit') {
+      setEditingItemId(null)
+      setForm(emptyFormState())
+      setFormError(null)
+      setMode('search')
+    }
+  }
+
+  function handleKeepEditing() {
+    setPendingDiscardAction(null)
   }
 
   async function handleSaveItem() {
@@ -334,7 +396,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
         <button
           type="button"
           className="collection-view-back-button"
-          onClick={onBack}
+          onClick={handleBackClick}
           aria-label="Back to collections"
         >
           <BackChevronIcon />
@@ -359,7 +421,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
             type="button"
             aria-pressed={mode === 'search'}
             className={`collection-view-mode-button${mode === 'search' ? ' collection-view-mode-button--active' : ''}`}
-            onClick={handleSwitchToSearch}
+            onClick={handleSwitchToSearchTab}
           >
             <SearchIcon /> Search
           </button>
@@ -603,6 +665,17 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
             </ul>
           )}
         </>
+      )}
+
+      {pendingDiscardAction && (
+        <ConfirmDialog
+          title="Discard changes?"
+          message="You have unsaved changes in this item. Discard them?"
+          confirmLabel="Discard changes"
+          cancelLabel="Keep editing"
+          onConfirm={handleConfirmDiscard}
+          onCancel={handleKeepEditing}
+        />
       )}
     </div>
   )
