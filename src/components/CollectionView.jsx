@@ -191,6 +191,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
   function isAddFormDirty() {
     if (mode !== 'add') {
       return false
+    if (mode === 'add') return
     }
     if (form.status !== initialForm.status || form.notes !== initialForm.notes) {
       return true
