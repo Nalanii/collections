@@ -2,7 +2,7 @@
   margin: 0;
   padding: 0.5rem 0.85rem;
   border-radius: var(--radius-md);
-  background-color: rgba(111, 113, 120, 0.15);
+  background-color: color-mix(in srgb, var(--color-text-muted) 15%, transparent);
   color: var(--color-text-muted);
   font-size: 0.8rem;
   font-weight: 600;

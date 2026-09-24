@@ -69,12 +69,12 @@
 }
 
 .collection-card-badge--shared {
-  background-color: rgba(124, 140, 248, 0.15);
-  color: var(--color-accent);
+  background-color: color-mix(in srgb, var(--color-accent) 15%, transparent);
+  color: var(--color-accent-text);
 }
 
 .collection-card-badge--readonly {
-  background-color: rgba(111, 113, 120, 0.15);
+  background-color: color-mix(in srgb, var(--color-text-muted) 15%, transparent);
   color: var(--color-text-muted);
 }
 
@@ -91,9 +91,9 @@
   border: none;
   border-radius: 50%;
   background-color: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-on-primary);
   font-size: 1.75rem;
   line-height: 1;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgb(var(--shadow-rgb) / 0.15);
 }

@@ -1,0 +1,21 @@
+.logo-img--dark {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .logo-img--light {
+    display: none;
+  }
+
+  :root:not([data-theme='light']) .logo-img--dark {
+    display: inline;
+  }
+}
+
+:root[data-theme='dark'] .logo-img--light {
+  display: none;
+}
+
+:root[data-theme='dark'] .logo-img--dark {
+  display: inline;
+}

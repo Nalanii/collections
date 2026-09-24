@@ -60,7 +60,7 @@
   border: none;
   border-radius: var(--radius-md);
   background-color: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-on-primary);
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
@@ -118,7 +118,7 @@
   border: none;
   border-radius: var(--radius-md);
   background-color: var(--color-primary-dark);
-  color: #ffffff;
+  color: var(--color-on-danger);
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;

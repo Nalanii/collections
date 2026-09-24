@@ -1,10 +1,11 @@
-import logo from '../assets/logo.png'
+import { Logo } from './Logo.jsx'
+import { ThemeToggle } from './ThemeToggle.jsx'
 import './Header.css'
 
 export function Header({ onLogoClick, action }) {
   const title = (
     <>
-      <img className="app-header-logo" src={logo} alt="" width="36" height="36" />
+      <Logo className="app-header-logo" width="36" height="36" />
       <span className="app-header-title">Collections</span>
     </>
   )
@@ -19,7 +20,10 @@ export function Header({ onLogoClick, action }) {
         ) : (
           <div className="app-header-brand">{title}</div>
         )}
-        {action}
+        <div className="app-header-actions">
+          <ThemeToggle />
+          {action}
+        </div>
       </div>
     </header>
   )

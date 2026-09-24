@@ -1,26 +1,73 @@
 :root {
+  color-scheme: light;
   --color-bg: #f4f2eb;
   --color-surface: #ffffff;
   --color-text: #1e2229;
-  --color-text-muted: #6f7178;
+  --color-text-muted: #5b5d64;
   --color-primary: #ff5a36;
-  --color-primary-dark: #e14a29;
+  --color-primary-dark: #b3311a;
+  --color-on-primary: #1e2229;
+  --color-on-danger: #ffffff;
   --color-accent: #7c8cf8;
-  --color-accent-green: #387e3f;
+  --color-accent-text: #4553c4;
+  --color-on-accent: #1e2229;
+  --color-accent-green: #2f6f36;
   --color-accent-purple: #49326b;
   --color-border: #e8e4da;
+  --color-shade: #000000;
+  --shadow-rgb: 30 34 41;
   --hover-tint: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
   --hover-tint-ghost: color-mix(in srgb, var(--color-primary) 12%, transparent);
   --hover-border: var(--color-primary);
   --hover-border-destructive: var(--color-primary-dark);
-  --hover-primary-bg: var(--color-primary-dark);
-  --hover-destructive-bg: color-mix(in srgb, var(--color-primary-dark) 82%, #000000);
+  --hover-primary-bg: color-mix(in srgb, var(--color-primary) 82%, #ffffff);
+  --hover-destructive-bg: color-mix(in srgb, var(--color-primary-dark) 82%, var(--color-shade));
   --hover-transition:
     background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease,
     box-shadow 0.15s ease;
   --radius-md: 12px;
   --font-family-base: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto,
     sans-serif;
+}
+
+/* Dark palette: applied when the OS prefers dark (unless the user forced light)... */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --color-bg: #14161a;
+    --color-surface: #1e2228;
+    --color-text: #ecebe6;
+    --color-text-muted: #a0a3ab;
+    --color-primary-dark: #ff7a5c;
+    --color-accent: #a3aefc;
+    --color-accent-text: #a3aefc;
+    --color-accent-green: #6fbf78;
+    --color-accent-purple: #b79be0;
+    --color-border: #343a43;
+    --color-shade: #ffffff;
+    --shadow-rgb: 0 0 0;
+  }
+}
+
+/* ...or when the user explicitly picked dark. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-bg: #14161a;
+  --color-surface: #1e2228;
+  --color-text: #ecebe6;
+  --color-text-muted: #a0a3ab;
+  --color-primary-dark: #ff7a5c;
+  --color-accent: #a3aefc;
+  --color-accent-text: #a3aefc;
+  --color-accent-green: #6fbf78;
+  --color-accent-purple: #b79be0;
+  --color-border: #343a43;
+  --color-shade: #ffffff;
+  --shadow-rgb: 0 0 0;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
 }
 
 * {
@@ -50,7 +97,7 @@ button {
 
 ::selection {
   background-color: var(--color-accent);
-  color: #ffffff;
+  color: var(--color-on-accent);
 }
 
 /* ---- Shared button hover treatments (no size/border-width changes) ---- */

@@ -6,7 +6,22 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/logo-192.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#ff5a36" />
+    <meta name="theme-color" content="#f4f2eb" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#14161a" media="(prefers-color-scheme: dark)" />
+    <script>
+      // Apply the saved theme before first paint to avoid a flash of the wrong theme.
+      // Keep in sync with src/theme.js.
+      try {
+        var t = localStorage.getItem('theme');
+        if (t === 'light' || t === 'dark') {
+          document.documentElement.setAttribute('data-theme', t);
+          var m = document.querySelectorAll('meta[name="theme-color"]');
+          for (var i = 0; i < m.length; i++) {
+            m[i].setAttribute('content', t === 'dark' ? '#14161a' : '#f4f2eb');
+          }
+        }
+      } catch (e) {}
+    </script>
     <link rel="manifest" href="/manifest.json" />
     <meta property="og:title" content="Collections" />
     <meta

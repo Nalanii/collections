@@ -74,7 +74,7 @@
 .pending-invite-accept-button {
   border: none;
   background-color: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-on-primary);
 }
 
 .pending-invite-decline-button {

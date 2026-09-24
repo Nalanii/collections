@@ -6,7 +6,7 @@
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
-  background-color: color-mix(in srgb, var(--color-text) 45%, transparent);
+  background-color: rgb(var(--shadow-rgb) / 0.45);
   backdrop-filter: blur(2px);
 }
 
@@ -16,7 +16,7 @@
   padding: 1.5rem;
   border-radius: var(--radius-md);
   background-color: var(--color-surface);
-  box-shadow: 0 24px 48px -20px rgb(30 34 41 / 0.35);
+  box-shadow: 0 24px 48px -20px rgb(var(--shadow-rgb) / 0.35);
 }
 
 .confirm-dialog-title {
@@ -58,7 +58,7 @@
   border: none;
   border-radius: var(--radius-md);
   background-color: var(--color-primary-dark);
-  color: #ffffff;
+  color: var(--color-on-danger);
   font-family: inherit;
   font-size: 0.95rem;
   font-weight: 600;

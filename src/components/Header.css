@@ -42,3 +42,9 @@ button.app-header-brand {
   font-weight: 600;
   color: var(--color-primary-dark);
 }
+
+.app-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}

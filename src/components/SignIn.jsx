@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { signInWithGoogle } from '../services/auth'
-import logo from '../assets/logo.png'
+import { Logo } from './Logo.jsx'
 import { DecorBackground } from './DecorBackground'
 import { Header } from './Header'
 import './SignIn.css'
@@ -62,7 +62,7 @@ export function SignIn() {
       />
       <div className="sign-in-screen decor-host" ref={hostRef}>
         <div className="sign-in-content" ref={contentRef}>
-          <img className="sign-in-hero" src={logo} alt="" width="512" height="512" />
+          <Logo className="sign-in-hero" width="512" height="512" />
           <p className="sign-in-subtitle">
             Track what you have and what you're hunting for
           </p>

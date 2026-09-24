@@ -1,10 +1,10 @@
 import './App.css'
-import logo from './assets/logo.png'
 import { Admin } from './components/Admin'
 import { CollectionView } from './components/CollectionView'
 import { DecorBackground } from './components/DecorBackground'
 import { Header } from './components/Header'
 import { Home } from './components/Home'
+import { Logo } from './components/Logo'
 import { SignIn } from './components/SignIn'
 import { useAuth } from './hooks/useAuth'
 import { useRoute } from './hooks/useRoute'
@@ -17,7 +17,7 @@ function App() {
   if (initializing) {
     return (
       <div className="app-shell app-shell--loading">
-        <img className="app-shell-loading-logo" src={logo} alt="" width="80" height="80" />
+        <Logo className="app-shell-loading-logo" width="80" height="80" />
       </div>
     )
   }

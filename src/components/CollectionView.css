@@ -101,7 +101,7 @@
 .collection-view-tab--active {
   border-color: var(--color-primary);
   background-color: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-on-primary);
 }
 
 .collection-view-error,
@@ -133,12 +133,12 @@
 
 .collection-view-item-row--have {
   border-left-color: var(--color-accent-green);
-  background-color: rgba(56, 126, 63, 0.08);
+  background-color: color-mix(in srgb, var(--color-accent-green) 8%, var(--color-surface));
 }
 
 .collection-view-item-row--iso {
   border-left-color: var(--color-accent-purple);
-  background-color: rgba(73, 50, 107, 0.08);
+  background-color: color-mix(in srgb, var(--color-accent-purple) 8%, var(--color-surface));
 }
 
 .collection-view-item-row-main {
@@ -202,7 +202,7 @@
 .collection-view-mode-button--active {
   border-color: var(--color-primary);
   background-color: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-on-primary);
 }
 
 .collection-view-add-form {
@@ -273,7 +273,7 @@
   border: none;
   border-radius: var(--radius-md);
   background-color: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-on-primary);
   font-family: inherit;
   font-size: 0.95rem;
   font-weight: 600;
@@ -348,5 +348,5 @@
 .collection-view-item-delete-confirm-button {
   border-color: var(--color-primary-dark);
   background-color: var(--color-primary-dark);
-  color: #ffffff;
+  color: var(--color-on-danger);
 }
