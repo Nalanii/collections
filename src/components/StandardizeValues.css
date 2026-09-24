@@ -1,0 +1,117 @@
+.standardize-zone {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.standardize-field-select {
+  margin-bottom: 0.75rem;
+}
+
+.standardize-message {
+  margin: 0.5rem 0 0;
+  color: var(--color-text);
+  font-size: 0.875rem;
+}
+
+.standardize-result {
+  margin: 0 0 0.5rem;
+  color: var(--color-accent-green);
+  font-size: 0.875rem;
+}
+
+.standardize-groups {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.standardize-group {
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.standardize-variants {
+  margin: 0;
+  padding: 0;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.standardize-legend {
+  padding: 0;
+  margin-bottom: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--color-text);
+}
+
+.standardize-variant {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  font-size: 0.9rem;
+}
+
+.standardize-variant-value {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.standardize-variant-count,
+.standardize-suggested,
+.standardize-hint {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+.standardize-custom-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+}
+
+.standardize-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.standardize-apply-button,
+.standardize-skip-button {
+  padding: 0.5rem 1rem;
+  min-height: 44px;
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.standardize-apply-button {
+  border: none;
+  background-color: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.standardize-skip-button {
+  border: 1px solid var(--color-border);
+  background-color: transparent;
+  color: var(--color-primary-dark);
+}
+
+.standardize-apply-button:disabled,
+.standardize-skip-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

@@ -3,11 +3,13 @@ import {
   collection,
   deleteDoc,
   doc,
+  FieldPath,
   onSnapshot,
   query,
   serverTimestamp,
   updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore'
 import { db } from './firebase'
 import { trimFieldValues } from '../utils/trimFieldValues'
@@ -66,6 +68,33 @@ export function updateItem(itemId, { status, fields, notes }) {
     notes: trimNotes(notes),
     updatedAt: serverTimestamp(),
   })
+}
+
+const MAX_BATCH_WRITES = 500
+
+// Sets `fields.<fieldName>` to `newValue` on every item in `itemIds`, in batches of
+// at most 500 writes. Uses a dot-path update so other fields are untouched. Returns
+// the number of items updated.
+export async function applyFieldValueChange(itemIds, fieldName, newValue) {
+  const value = typeof newValue === 'string' ? newValue.trim() : newValue
+  let changed = 0
+  for (let start = 0; start < itemIds.length; start += MAX_BATCH_WRITES) {
+    const batch = writeBatch(db)
+    const chunk = itemIds.slice(start, start + MAX_BATCH_WRITES)
+    for (const itemId of chunk) {
+      // FieldPath (not a "fields.<name>" string) so names containing dots still work.
+      batch.update(
+        doc(db, 'items', itemId),
+        new FieldPath('fields', fieldName),
+        value,
+        'updatedAt',
+        serverTimestamp()
+      )
+    }
+    await batch.commit()
+    changed += chunk.length
+  }
+  return changed
 }
 
 export function deleteItem(itemId) {

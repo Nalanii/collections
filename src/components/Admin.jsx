@@ -15,6 +15,7 @@ import { ReadOnlyBanner } from './ReadOnlyBanner'
 import { BackButton } from './BackButton'
 import { Select } from './Select'
 import { Spinner } from './Spinner'
+import { StandardizeValues } from './StandardizeValues'
 import './Admin.css'
 
 const EMPTY_VALUES = { name: '', emoji: '', fieldDefs: [] }
@@ -281,6 +282,10 @@ export function Admin({ user, collectionId, onDone }) {
           {inviteError && <p className="admin-error">{inviteError}</p>}
           {inviteSuccess && <p className="admin-invite-success">{inviteSuccess}</p>}
         </div>
+      )}
+
+      {isEditMode && showWriteControls && (
+        <StandardizeValues collectionId={collectionId} fieldDefs={collection.fieldDefs} />
       )}
 
       {isEditMode && (
