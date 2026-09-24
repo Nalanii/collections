@@ -48,6 +48,7 @@ export function CollectionForm({
   const [primaryTouched, setPrimaryTouched] = useState(false)
   const lastAddedKeyRef = useRef(null)
   const pendingMoveFocusRef = useRef(null)
+  const pendingFieldMoveFocusRef = useRef(null)
   const formRef = useRef(null)
   const formId = useId()
 
@@ -62,6 +63,23 @@ export function CollectionForm({
     const find = (dir) =>
       formRef.current?.querySelector(
         `[data-option-key="${pending.optionKey}"][data-move="${dir}"]`
+      )
+    const preferred = find(pending.direction)
+    const fallback = find(pending.direction === 'up' ? 'down' : 'up')
+    const target = preferred && !preferred.disabled ? preferred : fallback
+    target?.focus()
+  }, [fieldDefs])
+
+  // Same for a reordered field row.
+  useEffect(() => {
+    const pending = pendingFieldMoveFocusRef.current
+    if (!pending) {
+      return
+    }
+    pendingFieldMoveFocusRef.current = null
+    const find = (dir) =>
+      formRef.current?.querySelector(
+        `[data-field-key="${pending.fieldKey}"][data-move="${dir}"]`
       )
     const preferred = find(pending.direction)
     const fallback = find(pending.direction === 'up' ? 'down' : 'up')
@@ -184,6 +202,13 @@ export function CollectionForm({
     const key = nextRowKey++
     lastAddedKeyRef.current = key
     setFieldDefs((rows) => [...rows, { _key: key, name: '', type: 'text' }])
+  }
+
+  function handleMoveField(key, direction) {
+    pendingFieldMoveFocusRef.current = { fieldKey: key, direction }
+    setFieldDefs((rows) =>
+      moveOption(rows, rows.findIndex((row) => row._key === key), direction)
+    )
   }
 
   function handleRemoveField(key) {
@@ -324,7 +349,7 @@ export function CollectionForm({
           </span>
         </span>
         <div className="field-def-rows">
-          {fieldDefs.map((row) => (
+          {fieldDefs.map((row, rowIndex, allRows) => (
             <div className="field-def" key={row._key}>
               <div className="field-def-row">
                 <input
@@ -349,6 +374,46 @@ export function CollectionForm({
                   onChange={(newValue) => handleFieldTypeChange(row._key, newValue)}
                   ariaLabel="Field type"
                 />
+                <button
+                  type="button"
+                  className="field-def-move-button"
+                  data-field-key={row._key}
+                  data-move="up"
+                  disabled={rowIndex === 0}
+                  onClick={() => handleMoveField(row._key, 'up')}
+                  aria-label={`Move field ${rowIndex + 1} up`}
+                >
+                  <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                    <path
+                      d="M3.5 10l4.5-4.5 4.5 4.5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.75"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  className="field-def-move-button"
+                  data-field-key={row._key}
+                  data-move="down"
+                  disabled={rowIndex === allRows.length - 1}
+                  onClick={() => handleMoveField(row._key, 'down')}
+                  aria-label={`Move field ${rowIndex + 1} down`}
+                >
+                  <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                    <path
+                      d="M3.5 6l4.5 4.5L12.5 6"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.75"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
                 <button
                   type="button"
                   className="field-def-remove-button"
