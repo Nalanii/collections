@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react'
-import { validateOptions } from '../utils/fieldOptions'
+import { useEffect, useRef, useState } from 'react'
+import { moveOption, validateOptions } from '../utils/fieldOptions'
 import { Select } from './Select'
 import './CollectionForm.css'
 
@@ -18,7 +18,12 @@ const FIELD_TYPES = [
 let nextRowKey = 0
 
 function withRowKeys(fieldDefs) {
-  return fieldDefs.map((fieldDef) => ({ ...fieldDef, _key: nextRowKey++ }))
+  return fieldDefs.map((fieldDef) => ({
+    ...fieldDef,
+    _key: nextRowKey++,
+    // Stable per-option keys (UI only) so reordering doesn't remount inputs.
+    _optionKeys: (fieldDef.options ?? []).map(() => nextRowKey++),
+  }))
 }
 
 export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel, submitting = false }) {
@@ -29,6 +34,26 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
   const [emojiTouched, setEmojiTouched] = useState(false)
   const [fieldsTouched, setFieldsTouched] = useState(false)
   const lastAddedKeyRef = useRef(null)
+  const pendingMoveFocusRef = useRef(null)
+  const formRef = useRef(null)
+
+  // After a reorder, keep focus on the moved option's button (or the other
+  // one if the moved option reached an end and that button is now disabled).
+  useEffect(() => {
+    const pending = pendingMoveFocusRef.current
+    if (!pending) {
+      return
+    }
+    pendingMoveFocusRef.current = null
+    const find = (dir) =>
+      formRef.current?.querySelector(
+        `[data-option-key="${pending.optionKey}"][data-move="${dir}"]`
+      )
+    const preferred = find(pending.direction)
+    const fallback = find(pending.direction === 'up' ? 'down' : 'up')
+    const target = preferred && !preferred.disabled ? preferred : fallback
+    target?.focus()
+  }, [fieldDefs])
 
   const trimmedName = name.trim()
   const validFieldDefs = fieldDefs.filter((fieldDef) => fieldDef.name.trim() !== '')
@@ -59,9 +84,17 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
     )
   }
 
-  function updateOptions(key, update) {
+  function updateOptions(key, update, updateKeys = (keys) => keys) {
     setFieldDefs((rows) =>
-      rows.map((row) => (row._key === key ? { ...row, options: update(row.options ?? []) } : row))
+      rows.map((row) =>
+        row._key === key
+          ? {
+              ...row,
+              options: update(row.options ?? []),
+              _optionKeys: updateKeys(row._optionKeys ?? []),
+            }
+          : row
+      )
     )
   }
 
@@ -70,11 +103,25 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
   }
 
   function handleAddOption(key) {
-    updateOptions(key, (options) => [...options, ''])
+    const optionKey = nextRowKey++
+    updateOptions(key, (options) => [...options, ''], (keys) => [...keys, optionKey])
+  }
+
+  function handleMoveOption(key, index, direction, optionKey) {
+    pendingMoveFocusRef.current = { optionKey, direction }
+    updateOptions(
+      key,
+      (options) => moveOption(options, index, direction),
+      (keys) => moveOption(keys, index, direction)
+    )
   }
 
   function handleRemoveOption(key, index) {
-    updateOptions(key, (options) => options.filter((_, i) => i !== index))
+    updateOptions(
+      key,
+      (options) => options.filter((_, i) => i !== index),
+      (keys) => keys.filter((_, i) => i !== index)
+    )
     setFieldsTouched(true)
   }
 
@@ -117,7 +164,7 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
   const showDuplicateFieldsError = fieldsTouched && validFieldDefs.length > 0 && hasDuplicateFieldNames
 
   return (
-    <form className="collection-form" onSubmit={handleSubmit} noValidate>
+    <form className="collection-form" ref={formRef} onSubmit={handleSubmit} noValidate>
       <div className="collection-form-field">
         <label className="collection-form-label" htmlFor="collection-name">
           Name
@@ -201,8 +248,11 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
               </div>
               {row.type === 'dropdown' && (
                 <div className="field-def-options">
-                  {(row.options ?? []).map((option, index) => (
-                    <div className="field-def-option-row" key={index}>
+                  {(row.options ?? []).map((option, index, all) => {
+                    const optionKey = row._optionKeys?.[index] ?? index
+                    const fieldLabel = row.name.trim() || 'field'
+                    return (
+                    <div className="field-def-option-row" key={optionKey}>
                       <input
                         type="text"
                         className="collection-form-input"
@@ -210,13 +260,53 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
                         onChange={(event) => handleOptionChange(row._key, index, event.target.value)}
                         onBlur={() => setFieldsTouched(true)}
                         placeholder="Option"
-                        aria-label={`Option ${index + 1} of ${row.name.trim() || 'field'}`}
+                        aria-label={`Option ${index + 1} of ${fieldLabel}`}
                       />
+                      <button
+                        type="button"
+                        className="field-def-move-button"
+                        data-option-key={optionKey}
+                        data-move="up"
+                        disabled={index === 0}
+                        onClick={() => handleMoveOption(row._key, index, 'up', optionKey)}
+                        aria-label={`Move option ${index + 1} of ${fieldLabel} up`}
+                      >
+                        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                          <path
+                            d="M3.5 10l4.5-4.5 4.5 4.5"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.75"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        className="field-def-move-button"
+                        data-option-key={optionKey}
+                        data-move="down"
+                        disabled={index === all.length - 1}
+                        onClick={() => handleMoveOption(row._key, index, 'down', optionKey)}
+                        aria-label={`Move option ${index + 1} of ${fieldLabel} down`}
+                      >
+                        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                          <path
+                            d="M3.5 6l4.5 4.5L12.5 6"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.75"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
                       <button
                         type="button"
                         className="field-def-remove-button"
                         onClick={() => handleRemoveOption(row._key, index)}
-                        aria-label={`Remove option ${index + 1} of ${row.name.trim() || 'field'}`}
+                        aria-label={`Remove option ${index + 1} of ${fieldLabel}`}
                       >
                         <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
                           <path
@@ -228,7 +318,8 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
                         </svg>
                       </button>
                     </div>
-                  ))}
+                    )
+                  })}
                   <button
                     type="button"
                     className="field-def-add-button"

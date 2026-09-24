@@ -102,7 +102,7 @@
 
 .field-def-option-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr auto auto auto;
   align-items: center;
   gap: 0.5rem;
 }
@@ -127,6 +127,7 @@
   background-position: right 0.5rem center;
 }
 
+.field-def-move-button,
 .field-def-remove-button {
   display: flex;
   align-items: center;
@@ -141,6 +142,18 @@
   cursor: pointer;
 }
 
+.field-def-move-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.field-def-move-button:hover:not(:disabled) {
+  background-color: var(--hover-tint);
+  border-color: var(--color-primary-dark);
+  color: var(--color-primary-dark);
+}
+
+.field-def-move-button svg,
 .field-def-remove-button svg {
   display: block;
 }

@@ -31,3 +31,15 @@ export function buildSelectOptions(options, currentValue, emptyLabel = 'None') {
   }
   return [{ value: '', label: emptyLabel }, ...list]
 }
+
+// Returns a copy of `list` with the item at `index` moved one step up (toward
+// the start) or down. Out-of-range moves return an unchanged copy.
+export function moveOption(list, index, direction) {
+  const target = direction === 'up' ? index - 1 : index + 1
+  const copy = [...(list ?? [])]
+  if (index < 0 || index >= copy.length || target < 0 || target >= copy.length) {
+    return copy
+  }
+  ;[copy[index], copy[target]] = [copy[target], copy[index]]
+  return copy
+}
