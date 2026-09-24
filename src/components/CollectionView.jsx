@@ -80,16 +80,37 @@ function GearIcon() {
   )
 }
 
-// Single-line collection name; when it is cut off with an ellipsis, hovering shows the full name.
+// Single-line collection name; when it is cut off with an ellipsis, hovering (or tapping, on touch
+// screens) shows the full name.
 function CollectionName({ name }) {
   const [truncated, setTruncated] = useState(false)
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef(null)
+
+  function measure() {
+    const text = rootRef.current.firstElementChild
+    const isTruncated = text.scrollWidth > text.clientWidth
+    setTruncated(isTruncated)
+    return isTruncated
+  }
+
+  useEffect(() => {
+    if (!open) return undefined
+    function handlePointerDown(event) {
+      if (!rootRef.current?.contains(event.target)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [open])
+
   return (
     <span
-      className={`collection-view-name${truncated ? ' collection-view-name--truncated' : ''}`}
-      onMouseEnter={(event) => {
-        const text = event.currentTarget.firstElementChild
-        setTruncated(text.scrollWidth > text.clientWidth)
-      }}
+      ref={rootRef}
+      className={`collection-view-name${truncated ? ' collection-view-name--truncated' : ''}${open ? ' collection-view-name--open' : ''}`}
+      onMouseEnter={measure}
+      onClick={() => setOpen((wasOpen) => (wasOpen ? false : measure()))}
     >
       <span className="collection-view-name-text">{name}</span>
       {truncated && (

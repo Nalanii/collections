@@ -63,7 +63,8 @@
   pointer-events: none;
 }
 
-.collection-view-name--truncated:hover .collection-view-name-tooltip {
+.collection-view-name--truncated:hover .collection-view-name-tooltip,
+.collection-view-name--open .collection-view-name-tooltip {
   display: block;
 }
 
