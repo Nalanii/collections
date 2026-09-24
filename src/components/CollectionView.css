@@ -223,6 +223,15 @@
   color: var(--color-text);
 }
 
+.collection-view-add-select {
+  width: 100%;
+}
+
+.collection-view-add-select .select-trigger {
+  padding: 0.65rem 2.25rem 0.65rem 0.85rem;
+  min-height: 44px;
+}
+
 .collection-view-add-input,
 .collection-view-add-textarea {
   width: 100%;

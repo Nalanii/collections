@@ -75,7 +75,7 @@ describe('searchItems', () => {
     ]
     const dropdownItems = [
       { id: 'd1', status: 'have', notes: '', fields: { Title: 'Rumours', Condition: 'Mint' } },
-      { id: 'd2', status: 'have', notes: '', fields: { Title: 'Abbey Road', Condition: 'Good'} },
+      { id: 'd2', status: 'have', notes: '', fields: { Title: 'Abbey Road', Condition: 'Good' } },
     ]
 
     const result = searchItems(dropdownItems, dropdownFieldDefs, 'Mint')

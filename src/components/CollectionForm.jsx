@@ -34,9 +34,12 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
   const validFieldDefs = fieldDefs.filter((fieldDef) => fieldDef.name.trim() !== '')
   const trimmedFieldNames = validFieldDefs.map((fieldDef) => fieldDef.name.trim())
   const hasDuplicateFieldNames = new Set(trimmedFieldNames).size !== trimmedFieldNames.length
-  const hasInvalidOptions = validFieldDefs.some(
-    (fieldDef) => fieldDef.type === 'dropdown' && validateOptions(fieldDef.options) !== null
+  const optionsErrors = new Map(
+    fieldDefs
+      .filter((fieldDef) => fieldDef.type === 'dropdown')
+      .map((fieldDef) => [fieldDef._key, validateOptions(fieldDef.options)])
   )
+  const hasInvalidOptions = validFieldDefs.some((fieldDef) => optionsErrors.get(fieldDef._key))
   const isValid =
     trimmedName !== '' &&
     emoji !== '' &&
@@ -157,87 +160,87 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
         <div className="field-def-rows">
           {fieldDefs.map((row) => (
             <div className="field-def" key={row._key}>
-            <div className="field-def-row">
-              <input
-                type="text"
-                className="collection-form-input field-def-name-input"
-                value={row.name}
-                onChange={(event) => handleFieldNameChange(row._key, event.target.value)}
-                onBlur={() => setFieldsTouched(true)}
-                placeholder="Field name"
-                aria-label="Field name"
-                ref={(node) => {
-                  if (node && lastAddedKeyRef.current === row._key) {
-                    node.focus()
-                    lastAddedKeyRef.current = null
-                  }
-                }}
-              />
-              <Select
-                className="field-def-type-select"
-                options={FIELD_TYPES}
-                value={row.type}
-                onChange={(newValue) => handleFieldTypeChange(row._key, newValue)}
-                ariaLabel="Field type"
-              />
-              <button
-                type="button"
-                className="field-def-remove-button"
-                onClick={() => handleRemoveField(row._key)}
-                aria-label="Remove field"
-              >
-                <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-                  <path
-                    d="M3.5 3.5l9 9m0-9l-9 9"
-                    stroke="currentColor"
-                    strokeWidth="1.75"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </button>
-            </div>
-            {row.type === 'dropdown' && (
-              <div className="field-def-options">
-                {(row.options ?? []).map((option, index) => (
-                  <div className="field-def-option-row" key={index}>
-                    <input
-                      type="text"
-                      className="collection-form-input"
-                      value={option}
-                      onChange={(event) => handleOptionChange(row._key, index, event.target.value)}
-                      onBlur={() => setFieldsTouched(true)}
-                      placeholder="Option"
-                      aria-label={`Option ${index + 1}`}
-                    />
-                    <button
-                      type="button"
-                      className="field-def-remove-button"
-                      onClick={() => handleRemoveOption(row._key, index)}
-                      aria-label={`Remove option ${index + 1}`}
-                    >
-                      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-                        <path
-                          d="M3.5 3.5l9 9m0-9l-9 9"
-                          stroke="currentColor"
-                          strokeWidth="1.75"
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
+              <div className="field-def-row">
+                <input
+                  type="text"
+                  className="collection-form-input field-def-name-input"
+                  value={row.name}
+                  onChange={(event) => handleFieldNameChange(row._key, event.target.value)}
+                  onBlur={() => setFieldsTouched(true)}
+                  placeholder="Field name"
+                  aria-label="Field name"
+                  ref={(node) => {
+                    if (node && lastAddedKeyRef.current === row._key) {
+                      node.focus()
+                      lastAddedKeyRef.current = null
+                    }
+                  }}
+                />
+                <Select
+                  className="field-def-type-select"
+                  options={FIELD_TYPES}
+                  value={row.type}
+                  onChange={(newValue) => handleFieldTypeChange(row._key, newValue)}
+                  ariaLabel="Field type"
+                />
                 <button
                   type="button"
-                  className="field-def-add-button"
-                  onClick={() => handleAddOption(row._key)}
+                  className="field-def-remove-button"
+                  onClick={() => handleRemoveField(row._key)}
+                  aria-label="Remove field"
                 >
-                  + Add option
+                  <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                    <path
+                      d="M3.5 3.5l9 9m0-9l-9 9"
+                      stroke="currentColor"
+                      strokeWidth="1.75"
+                      strokeLinecap="round"
+                    />
+                  </svg>
                 </button>
-                {fieldsTouched && row.name.trim() !== '' && validateOptions(row.options) && (
-                  <p className="collection-form-error">{validateOptions(row.options)}</p>
-                )}
               </div>
-            )}
+              {row.type === 'dropdown' && (
+                <div className="field-def-options">
+                  {(row.options ?? []).map((option, index) => (
+                    <div className="field-def-option-row" key={index}>
+                      <input
+                        type="text"
+                        className="collection-form-input"
+                        value={option}
+                        onChange={(event) => handleOptionChange(row._key, index, event.target.value)}
+                        onBlur={() => setFieldsTouched(true)}
+                        placeholder="Option"
+                        aria-label={`Option ${index + 1} of ${row.name.trim() || 'field'}`}
+                      />
+                      <button
+                        type="button"
+                        className="field-def-remove-button"
+                        onClick={() => handleRemoveOption(row._key, index)}
+                        aria-label={`Remove option ${index + 1} of ${row.name.trim() || 'field'}`}
+                      >
+                        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                          <path
+                            d="M3.5 3.5l9 9m0-9l-9 9"
+                            stroke="currentColor"
+                            strokeWidth="1.75"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className="field-def-add-button"
+                    onClick={() => handleAddOption(row._key)}
+                  >
+                    + Add option
+                  </button>
+                  {fieldsTouched && row.name.trim() !== '' && optionsErrors.get(row._key) && (
+                    <p className="collection-form-error">{optionsErrors.get(row._key)}</p>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>

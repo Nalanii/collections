@@ -165,7 +165,10 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
 
   useEffect(() => {
     if (mode === 'add') {
-      firstFieldRef.current?.focus()
+      // The first field's ref is only on text/number inputs; a dropdown first field
+      // (custom Select) is focused via its trigger id instead.
+      const target = firstFieldRef.current ?? document.getElementById('add-field-0')
+      target?.focus()
     }
   }, [mode, focusToken])
 
