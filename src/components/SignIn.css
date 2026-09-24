@@ -74,6 +74,14 @@
   transform: none;
 }
 
+.sign-in-provider-icon {
+  width: 25px;
+  height: 20px;
+  flex-shrink: 0;
+  /* Same height as the Google icon; nudged so the artwork's top meets the text's cap height. */
+  transform: translateY(3.5px);
+}
+
 .google-icon {
   width: 20px;
   height: 20px;

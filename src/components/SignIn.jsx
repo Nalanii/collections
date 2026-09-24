@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
-import { signInWithGoogle } from '../services/auth'
+import { signInWithGoogle, signInWithSimpleLogin } from '../services/auth'
+import simpleLoginLogo from '../assets/simple-login-logo.svg'
 import { Logo } from './Logo.jsx'
 import { DecorBackground } from './DecorBackground'
 import { Header } from './Header'
@@ -34,12 +35,13 @@ export function SignIn() {
   const hostRef = useRef(null)
   const contentRef = useRef(null)
 
-  async function handleSignIn() {
+  async function handleSignIn(signIn = signInWithGoogle) {
     setError(null)
     setSigningIn(true)
     try {
-      await signInWithGoogle()
-    } catch {
+      await signIn()
+    } catch (err) {
+      console.error('Sign-in failed:', err.code, err.message)
       setError('Sign-in failed. Please try again.')
     } finally {
       setSigningIn(false)
@@ -48,18 +50,7 @@ export function SignIn() {
 
   return (
     <>
-      <Header
-        action={
-          <button
-            type="button"
-            className="header-action-button"
-            onClick={handleSignIn}
-            disabled={signingIn}
-          >
-            {signingIn ? 'Signing in…' : 'Sign in'}
-          </button>
-        }
-      />
+      <Header />
       <div className="sign-in-screen decor-host" ref={hostRef}>
         <div className="sign-in-content" ref={contentRef}>
           <Logo className="sign-in-hero" width="512" height="512" />
@@ -69,11 +60,25 @@ export function SignIn() {
           <button
             type="button"
             className="sign-in-cta"
-            onClick={handleSignIn}
+            onClick={() => handleSignIn()}
             disabled={signingIn}
           >
             <GoogleIcon />
             {signingIn ? 'Signing in…' : 'Sign in with Google'}
+          </button>
+          <button
+            type="button"
+            className="sign-in-cta"
+            onClick={() => handleSignIn(signInWithSimpleLogin)}
+            disabled={signingIn}
+          >
+            <img
+              className="sign-in-provider-icon"
+              src={simpleLoginLogo}
+              alt=""
+              aria-hidden="true"
+            />
+            {signingIn ? 'Signing in…' : 'Sign in with SimpleLogin'}
           </button>
           {error && <p className="sign-in-error">{error}</p>}
         </div>
