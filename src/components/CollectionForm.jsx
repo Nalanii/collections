@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { moveOption, validateOptions } from '../utils/fieldOptions'
+import { detectOptionRenames, moveOption, validateOptions } from '../utils/fieldOptions'
 import { Select } from './Select'
 import './CollectionForm.css'
 
@@ -25,6 +25,9 @@ function withRowKeys(fieldDefs) {
     _key: nextRowKey++,
     // Stable per-option keys (UI only) so reordering doesn't remount inputs.
     _optionKeys: (fieldDef.options ?? []).map(() => nextRowKey++),
+    // Saved text of each option, parallel to `options` (null for rows added in
+    // this edit), so a text edit can be told apart from a reorder/add/remove.
+    _originalOptions: [...(fieldDef.options ?? [])],
   }))
 }
 
@@ -108,7 +111,12 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
     )
   }
 
-  function updateOptions(key, update, updateKeys = (keys) => keys) {
+  function updateOptions(
+    key,
+    update,
+    updateKeys = (keys) => keys,
+    updateOriginals = (originals) => originals
+  ) {
     setFieldDefs((rows) =>
       rows.map((row) =>
         row._key === key
@@ -116,6 +124,7 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
               ...row,
               options: update(row.options ?? []),
               _optionKeys: updateKeys(row._optionKeys ?? []),
+              _originalOptions: updateOriginals(row._originalOptions ?? []),
             }
           : row
       )
@@ -128,7 +137,12 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
 
   function handleAddOption(key) {
     const optionKey = nextRowKey++
-    updateOptions(key, (options) => [...options, ''], (keys) => [...keys, optionKey])
+    updateOptions(
+      key,
+      (options) => [...options, ''],
+      (keys) => [...keys, optionKey],
+      (originals) => [...originals, null]
+    )
   }
 
   function handleMoveOption(key, index, direction, optionKey) {
@@ -136,7 +150,8 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
     updateOptions(
       key,
       (options) => moveOption(options, index, direction),
-      (keys) => moveOption(keys, index, direction)
+      (keys) => moveOption(keys, index, direction),
+      (originals) => moveOption(originals, index, direction)
     )
   }
 
@@ -144,7 +159,8 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
     updateOptions(
       key,
       (options) => options.filter((_, i) => i !== index),
-      (keys) => keys.filter((_, i) => i !== index)
+      (keys) => keys.filter((_, i) => i !== index),
+      (originals) => originals.filter((_, i) => i !== index)
     )
     setFieldsTouched(true)
   }
@@ -185,6 +201,15 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
         ...(prefix && { prefix }),
         ...(suffix && { suffix }),
       })),
+      // Option text edits to replay on existing items (empty when creating).
+      optionRenames: validFieldDefs
+        .filter((fieldDef) => fieldDef.type === 'dropdown')
+        .flatMap((fieldDef) =>
+          detectOptionRenames(fieldDef.options, fieldDef._originalOptions).map((rename) => ({
+            fieldName: fieldDef.name.trim(),
+            ...rename,
+          }))
+        ),
     })
   }
 

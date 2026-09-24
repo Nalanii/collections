@@ -3,14 +3,18 @@ import {
   collectionGroup,
   deleteDoc,
   doc,
+  FieldPath,
   getDoc,
+  getDocs,
   onSnapshot,
   query,
   serverTimestamp,
   setDoc,
   updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore'
+import { applyOptionRenames } from '../utils/fieldOptions'
 import { db } from './firebase'
 
 export async function createCollection(user, { name, emoji, fieldDefs }) {
@@ -74,8 +78,82 @@ export async function createCollection(user, { name, emoji, fieldDefs }) {
   )
 }
 
-export function updateCollection(collectionId, { name, emoji, fieldDefs }) {
-  return updateDoc(doc(db, 'collections', collectionId), { name, emoji, fieldDefs })
+// Firestore caps a batch at 500 writes; in the atomic path one is the
+// collection doc itself.
+const MAX_BATCH_WRITES = 500
+const MAX_RENAMED_ITEMS = MAX_BATCH_WRITES - 1
+
+// `optionRenames` is a list of `{ fieldName, from, to }` dropdown option
+// renames. Every item in the collection holding `from` for that field is
+// rewritten to `to`. Up to 499 items are written in the same atomic batch as
+// the field-definition update, so a failure leaves both unchanged; larger
+// renames fall back to staged, retry-safe writes (see below).
+export async function updateCollection(
+  collectionId,
+  { name, emoji, fieldDefs, optionRenames = [] }
+) {
+  const collectionRef = doc(db, 'collections', collectionId)
+  if (optionRenames.length === 0) {
+    return updateDoc(collectionRef, { name, emoji, fieldDefs })
+  }
+
+  const itemsSnap = await getDocs(
+    query(collection(db, 'items'), where('collectionId', '==', collectionId))
+  )
+  const rewrites = []
+  itemsSnap.forEach((itemSnap) => {
+    const itemFields = itemSnap.data().fields ?? {}
+    const changes = []
+    // Group by field so a swap (A->B, B->A) is resolved against the old value once.
+    const fieldNames = new Set(optionRenames.map((rename) => rename.fieldName))
+    fieldNames.forEach((fieldName) => {
+      const renames = optionRenames.filter((rename) => rename.fieldName === fieldName)
+      const current = itemFields[fieldName]
+      const next = applyOptionRenames(current, renames)
+      if (next !== current) {
+        changes.push([new FieldPath('fields', fieldName), next])
+      }
+    })
+    if (changes.length > 0) {
+      rewrites.push({ ref: itemSnap.ref, changes })
+    }
+  })
+
+  if (rewrites.length <= MAX_RENAMED_ITEMS) {
+    const batch = writeBatch(db)
+    batch.update(collectionRef, { name, emoji, fieldDefs })
+    rewrites.forEach(({ ref, changes }) => {
+      batch.update(ref, ...changes.flat())
+    })
+    await batch.commit()
+    return
+  }
+
+  // Too many items for one atomic batch, so write them in stages. Items go
+  // first and the field definition last: if any stage fails the definition is
+  // unchanged, the form still holds the old option text, and retrying the save
+  // re-detects the rename (items already rewritten no longer match `from`, so
+  // they are skipped). That only holds when no rename's `to` is another
+  // rename's `from` in the same field (a swap or chain would re-rewrite
+  // already-converted items on retry), so those are refused.
+  const isChained = optionRenames.some((rename) =>
+    optionRenames.some(
+      (other) => other.fieldName === rename.fieldName && other.from === rename.to
+    )
+  )
+  if (isChained) {
+    throw new Error(
+      'Swapping or chaining option renames on a collection this large is not supported; rename one option at a time.'
+    )
+  }
+  for (let start = 0; start < rewrites.length; start += MAX_BATCH_WRITES) {
+    const batch = writeBatch(db)
+    rewrites.slice(start, start + MAX_BATCH_WRITES).forEach(({ ref, changes }) => {
+      batch.update(ref, ...changes.flat())
+    })
+    await batch.commit()
+  }
+  await updateDoc(collectionRef, { name, emoji, fieldDefs })
 }
 
 export function deleteCollection(collectionId) {

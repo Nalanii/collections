@@ -1,5 +1,56 @@
 import { describe, expect, it } from 'vitest'
-import { buildSelectOptions, moveOption, validateOptions } from './fieldOptions'
+import {
+  applyOptionRenames,
+  buildSelectOptions,
+  detectOptionRenames,
+  moveOption,
+  validateOptions,
+} from './fieldOptions'
+
+describe('detectOptionRenames', () => {
+  it('reports an option whose text changed', () => {
+    expect(detectOptionRenames(['Mint', 'Very Good'], ['Mint', 'Good'])).toEqual([
+      { from: 'Good', to: 'Very Good' },
+    ])
+  })
+
+  it('reports nothing when only reordered', () => {
+    expect(detectOptionRenames(['Good', 'Mint'], ['Good', 'Mint'])).toEqual([])
+  })
+
+  it('ignores added rows (no original) and removed rows', () => {
+    expect(detectOptionRenames(['Mint', 'New'], ['Mint', null])).toEqual([])
+    expect(detectOptionRenames(['Mint'], ['Mint'])).toEqual([])
+  })
+
+  it('trims the new text and ignores whitespace-only edits', () => {
+    expect(detectOptionRenames(['  Mint ', ' Best '], ['Mint', 'Good'])).toEqual([
+      { from: 'Good', to: 'Best' },
+    ])
+  })
+
+  it('handles missing inputs', () => {
+    expect(detectOptionRenames(undefined, undefined)).toEqual([])
+    expect(detectOptionRenames(['A'], undefined)).toEqual([])
+  })
+})
+
+describe('applyOptionRenames', () => {
+  it('maps the old value to the new one and leaves others alone', () => {
+    const renames = [{ from: 'Good', to: 'Very Good' }]
+    expect(applyOptionRenames('Good', renames)).toBe('Very Good')
+    expect(applyOptionRenames('Mint', renames)).toBe('Mint')
+  })
+
+  it('applies swaps once rather than chaining', () => {
+    const renames = [
+      { from: 'A', to: 'B' },
+      { from: 'B', to: 'A' },
+    ]
+    expect(applyOptionRenames('A', renames)).toBe('B')
+    expect(applyOptionRenames('B', renames)).toBe('A')
+  })
+})
 
 describe('validateOptions', () => {
   it('accepts a list of distinct non-blank options', () => {
