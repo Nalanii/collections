@@ -174,12 +174,14 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
       // `options` is only persisted for dropdown fields; switching away drops it.
       // `main`, `excludeFromSearch`, `prefix` and `suffix` are only persisted when set
       // (prefix/suffix are never trimmed so ' pages' keeps its leading space).
-      fieldDefs: validFieldDefs.map(({ name: fieldName, type, options, main, excludeFromSearch, prefix, suffix }) => ({
+      // `suggestOptions` is likewise only persisted (as true) for text fields.
+      fieldDefs: validFieldDefs.map(({ name: fieldName, type, options, main, excludeFromSearch, suggestOptions, prefix, suffix }) => ({
         name: fieldName.trim(),
         type,
         ...(type === 'dropdown' && { options: options.map((option) => option.trim()) }),
         ...(main && { main: true }),
         ...(excludeFromSearch && { excludeFromSearch: true }),
+        ...(type === 'text' && suggestOptions && { suggestOptions: true }),
         ...(prefix && { prefix }),
         ...(suffix && { suffix }),
       })),
@@ -296,6 +298,18 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
                 />
                 Exclude from search
               </label>
+              {row.type === 'text' && (
+                <label className="field-def-main-label">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(row.suggestOptions)}
+                    onChange={(event) =>
+                      handleFieldTextChange(row._key, 'suggestOptions', event.target.checked)
+                    }
+                  />
+                  Suggest options
+                </label>
+              )}
               <div className="field-def-affixes">
                 <input
                   type="text"

@@ -11,6 +11,7 @@ import { BackButton, BackChevronIcon } from './BackButton'
 import { ConfirmDialog } from './ConfirmDialog'
 import { ReadOnlyBanner } from './ReadOnlyBanner'
 import { Select } from './Select'
+import { SuggestInput } from './SuggestInput'
 import './CollectionView.css'
 
 const EMPTY_FIELD_DEFS = []
@@ -505,6 +506,15 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
                   value={form.fields[fieldDef.name] ?? ''}
                   onChange={(newValue) => handleFieldChange(fieldDef.name, newValue)}
                   ariaLabel={fieldDef.name}
+                />
+              ) : fieldDef.type === 'text' && fieldDef.suggestOptions ? (
+                <SuggestInput
+                  id={`add-field-${index}`}
+                  items={items}
+                  fieldName={fieldDef.name}
+                  value={form.fields[fieldDef.name] ?? ''}
+                  onChange={(newValue) => handleFieldChange(fieldDef.name, newValue)}
+                  inputRef={index === 0 ? firstFieldRef : undefined}
                 />
               ) : (
                 <input

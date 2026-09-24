@@ -239,6 +239,40 @@
   min-height: 44px;
 }
 
+.suggest-input-root {
+  position: relative;
+}
+
+.suggest-listbox {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 0.25rem);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0.25rem;
+  list-style: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--color-text) 12%, transparent);
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
+.suggest-option {
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.suggest-option:hover,
+.suggest-option--highlighted {
+  background-color: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
+}
+
 .collection-view-add-input,
 .collection-view-add-textarea {
   width: 100%;
