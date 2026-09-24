@@ -476,7 +476,9 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
     <div className="collection-view-screen">
       <div className="collection-view-sticky">
       <div className="collection-view-header">
-        <span className="collection-view-emoji">{collectionData.emoji}</span>
+        {collectionData.emoji && (
+          <span className="collection-view-emoji">{collectionData.emoji}</span>
+        )}
         <CollectionName name={collectionData.name} />
         <button
           type="button"

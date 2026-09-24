@@ -246,7 +246,8 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
       ) : (
         <div className="admin-readonly-summary">
           <p className="admin-readonly-summary-name">
-            {initialValues.emoji} {initialValues.name}
+            {initialValues.emoji ? `${initialValues.emoji} ` : ''}
+            {initialValues.name}
           </p>
           <ul className="admin-readonly-summary-fields">
             {initialValues.fieldDefs.map((fieldDef) => (

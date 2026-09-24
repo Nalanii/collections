@@ -16,6 +16,16 @@
   color: var(--color-text);
 }
 
+.collection-form-required {
+  color: var(--color-danger);
+  margin-left: 0.15rem;
+}
+
+.collection-form-hint {
+  font-weight: 400;
+  color: var(--color-text-muted, inherit);
+}
+
 .collection-form-input,
 .collection-form-select {
   padding: 0.6rem 0.75rem;

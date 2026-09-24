@@ -67,7 +67,9 @@ export function PendingInvites({ user }) {
           const busy = busyKey === acceptKey || busyKey === declineKey
           return (
             <li className="pending-invite-card" key={invite.collectionId}>
-              <span className="pending-invite-emoji">{invite.collectionEmoji}</span>
+              {invite.collectionEmoji && (
+                <span className="pending-invite-emoji">{invite.collectionEmoji}</span>
+              )}
               <div className="pending-invite-details">
                 <span className="pending-invite-name">{invite.collectionName}</span>
                 <span className="pending-invite-role">Invited as {invite.role}</span>

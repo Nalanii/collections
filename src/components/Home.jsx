@@ -60,7 +60,7 @@ export function Home({ user, onCreateCollection, onOpenCollection = () => {} }) 
                 }
               }}
             >
-              <span className="collection-card-emoji">{c.emoji}</span>
+              {c.emoji && <span className="collection-card-emoji">{c.emoji}</span>}
               <span className="collection-card-name">{c.name}</span>
               {c.ownerId !== user.uid && (
                 <span className="collection-card-badge collection-card-badge--shared">

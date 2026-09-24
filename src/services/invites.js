@@ -49,7 +49,7 @@ export function subscribeToUserInvites(email, callback) {
               role: inviteData.role,
               invitedBy: inviteData.invitedBy,
               collectionName: collectionSnap.data().name,
-              collectionEmoji: collectionSnap.data().emoji,
+              collectionEmoji: collectionSnap.data().emoji ?? '',
             }
           })
         )

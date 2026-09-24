@@ -44,8 +44,8 @@ export function CollectionForm({
   const [emoji, setEmoji] = useState(initialValues.emoji)
   const [fieldDefs, setFieldDefs] = useState(() => withRowKeys(initialValues.fieldDefs))
   const [nameTouched, setNameTouched] = useState(false)
-  const [emojiTouched, setEmojiTouched] = useState(false)
   const [fieldsTouched, setFieldsTouched] = useState(false)
+  const [primaryTouched, setPrimaryTouched] = useState(false)
   const lastAddedKeyRef = useRef(null)
   const pendingMoveFocusRef = useRef(null)
   const formRef = useRef(null)
@@ -82,10 +82,16 @@ export function CollectionForm({
   const hasInvalidOptions = validFieldDefs.some((fieldDef) => optionsErrors.get(fieldDef._key))
   const searchableCount = fieldDefs.filter((fieldDef) => !fieldDef.excludeFromSearch).length
   const hasSearchableField = validFieldDefs.some((fieldDef) => !fieldDef.excludeFromSearch)
+  // Legacy collections saved before the primary-field rule have fields but none
+  // marked primary; they stay saveable as-is.
+  const isLegacyWithoutPrimary =
+    initialValues.fieldDefs.length > 0 && !initialValues.fieldDefs.some((fieldDef) => fieldDef.main)
+  const hasPrimaryField =
+    isLegacyWithoutPrimary || validFieldDefs.some((fieldDef) => fieldDef.main)
   const isValid =
     trimmedName !== '' &&
-    emoji !== '' &&
     validFieldDefs.length > 0 &&
+    hasPrimaryField &&
     hasSearchableField &&
     !hasDuplicateFieldNames &&
     !hasInvalidOptions
@@ -185,12 +191,35 @@ export function CollectionForm({
     setFieldsTouched(true)
   }
 
+  function focusFirstInvalid() {
+    const form = formRef.current
+    if (!form) {
+      return
+    }
+    let target = null
+    if (trimmedName === '') {
+      target = form.querySelector('#collection-name')
+    } else if (validFieldDefs.length === 0) {
+      const inputs = [...form.querySelectorAll('.field-def-name-input')]
+      target = inputs.find((input) => input.value.trim() === '') ?? form.querySelector('[data-add-field]')
+    } else if (!hasSearchableField || hasDuplicateFieldNames || hasInvalidOptions) {
+      target = form.querySelector('.field-def-name-input')
+    } else if (!hasPrimaryField) {
+      target = form.querySelector('[data-primary-checkbox]:not(:disabled)')
+    }
+    if (target) {
+      target.scrollIntoView({ block: 'center' })
+      target.focus()
+    }
+  }
+
   function handleSubmit(event) {
     event.preventDefault()
     setNameTouched(true)
-    setEmojiTouched(true)
     setFieldsTouched(true)
+    setPrimaryTouched(true)
     if (!isValid) {
+      focusFirstInvalid()
       return
     }
     onSubmit({
@@ -225,7 +254,7 @@ export function CollectionForm({
   const submittingLabel = submitLabel.toLowerCase().includes('create') ? 'Creating…' : 'Saving…'
 
   const showNameError = nameTouched && trimmedName === ''
-  const showEmojiError = emojiTouched && emoji === ''
+  const showPrimaryError = primaryTouched && !hasPrimaryField
   const showFieldsError = fieldsTouched && validFieldDefs.length === 0
   const showNoSearchableFieldError =
     fieldsTouched && validFieldDefs.length > 0 && !hasSearchableField
@@ -240,7 +269,7 @@ export function CollectionForm({
         type="submit"
         form={formId}
         className="collection-form-submit-button"
-        disabled={!isValid || submitting}
+        disabled={submitting}
       >
         {submitting ? submittingLabel : submitLabel}
       </button>
@@ -252,6 +281,7 @@ export function CollectionForm({
       <div className="collection-form-field">
         <label className="collection-form-label" htmlFor="collection-name">
           Name
+          <span className="collection-form-required" aria-hidden="true">*</span>
         </label>
         <input
           id="collection-name"
@@ -266,28 +296,33 @@ export function CollectionForm({
       </div>
 
       <div className="collection-form-field">
-        <span className="collection-form-label">Emoji</span>
-        <div className="emoji-grid" role="group" aria-label="Choose an emoji">
+        <span className="collection-form-label">
+          Emoji <span className="collection-form-hint">(optional)</span>
+        </span>
+        <div className="emoji-grid" role="group" aria-label="Choose an emoji (optional)">
           {EMOJI_OPTIONS.map((option) => (
             <button
               key={option}
               type="button"
               className={`emoji-grid-option${option === emoji ? ' selected' : ''}`}
               aria-pressed={option === emoji}
-              onClick={() => {
-                setEmoji(option)
-                setEmojiTouched(true)
-              }}
+              onClick={() => setEmoji(option === emoji ? '' : option)}
             >
               {option}
             </button>
           ))}
         </div>
-        {showEmojiError && <p className="collection-form-error">Choose an emoji.</p>}
       </div>
 
       <div className="collection-form-field">
-        <span className="collection-form-label">Fields</span>
+        <span className="collection-form-label">
+          Fields
+          <span className="collection-form-required" aria-hidden="true">*</span>
+          <span className="collection-form-hint">
+            {' '}
+            (at least one, and at least one primary field)
+          </span>
+        </span>
         <div className="field-def-rows">
           {fieldDefs.map((row) => (
             <div className="field-def" key={row._key}>
@@ -333,6 +368,7 @@ export function CollectionForm({
               <label className="field-def-main-label">
                 <input
                   type="checkbox"
+                  data-primary-checkbox
                   checked={Boolean(row.main)}
                   disabled={!row.main && mainCount >= MAX_MAIN_FIELDS}
                   onChange={(event) => handleFieldMainChange(row._key, event.target.checked)}
@@ -471,7 +507,12 @@ export function CollectionForm({
             </div>
           ))}
         </div>
-        <button type="button" className="field-def-add-button" onClick={handleAddField}>
+        <button
+          type="button"
+          className="field-def-add-button"
+          data-add-field
+          onClick={handleAddField}
+        >
           + Add field
         </button>
         {showFieldsError && (
@@ -482,6 +523,9 @@ export function CollectionForm({
         )}
         {showNoSearchableFieldError && (
           <p className="collection-form-error">At least one field must be searchable.</p>
+        )}
+        {showPrimaryError && (
+          <p className="collection-form-error">Select at least one primary field.</p>
         )}
       </div>
 
