@@ -24,6 +24,8 @@ fuzzy matching so you can check on the spot before you buy a duplicate.
   collection is open
 - ✅ Track items as Have vs. wishlist
 - 👥 Per-collection sharing with viewer/editor roles
+- 📴 Works offline — search, add and edit with no signal; changes sync when
+  you're back online (see [Offline use](#offline-use))
 - 📱 Mobile-first UI, installable as a PWA
 - 🔐 Google sign-in via Firebase Auth
 
@@ -57,6 +59,23 @@ This app is wired to the Firebase project `collections-tracker-nls`.
 2. Fill in the values from the Firebase console (Project settings → General →
    Your apps → SDK setup and configuration) or ask a project maintainer for
    them.
+
+## Offline use
+
+Firestore's persistent cache keeps your collections available with no signal:
+search still works, and items you add or edit are queued and sync when the
+device reconnects. An offline banner shows while you're viewing cached data.
+
+Limitations:
+
+- **First load needs a connection.** Data is only cached after it has been
+  loaded once while online on that device, so a device that has never loaded
+  your account has nothing to show. Open Home once with a signal; every
+  collection on your account is then cached.
+- **Same-field conflicts are last-write-wins.** Edits to different fields of
+  the same item merge, but if two people edit the same field of one item (for
+  example, one of them while offline), whichever write reaches the server last
+  wins.
 
 ## Testing
 
