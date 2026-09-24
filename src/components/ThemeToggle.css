@@ -1,10 +1,11 @@
-/* Matches .header-action-button (Sign out); stretches to its height in the header. */
+/* Square, sized to match .header-action-button (Sign out) so it looks the same with or without it. */
 .theme-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  align-self: stretch;
-  width: 2.25rem;
+  box-sizing: border-box;
+  width: var(--header-control-size, 2rem);
+  height: var(--header-control-size, 2rem);
   padding: 0;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);

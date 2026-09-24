@@ -5,7 +5,9 @@
 }
 
 .header-action-button {
-  padding: 0.4rem 0.75rem;
+  box-sizing: border-box;
+  height: var(--header-control-size, 2rem);
+  padding: 0 0.75rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background-color: transparent;
