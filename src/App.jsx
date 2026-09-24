@@ -46,6 +46,11 @@ function App() {
         user={user}
         collectionId={route.collectionId ?? undefined}
         onDone={goHome}
+        onCancel={
+          route.collectionId
+            ? () => navigate(`/collections/${encodeURIComponent(route.collectionId)}`)
+            : goHome
+        }
       />
     )
   } else if (showCollectionView) {

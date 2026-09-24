@@ -4,15 +4,18 @@
   --color-surface: #ffffff;
   --color-text: #1e2229;
   --color-text-muted: #5b5d64;
-  --color-primary: #ff5a36;
-  --color-primary-dark: #ff5a36;
+  --color-primary: #7c8cf8;
+  --color-primary-dark: #4553c4;
   --color-on-primary: #1e2229;
+  --color-danger: #ff5a36;
+  --color-brand: #ff5a36;
   --color-on-danger: #ffffff;
   --color-accent: #7c8cf8;
   --color-accent-text: #4553c4;
   --color-on-accent: #1e2229;
   --color-accent-green: #387e3f;
-  --color-accent-purple: #7c8cf8;
+  --color-accent-purple: #9b4fd6;
+  --color-on-purple: #ffffff;
   --color-deep-purple: #49326b;
   --color-border: #e8e4da;
   --color-shade: #000000;
@@ -20,9 +23,9 @@
   --hover-tint: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
   --hover-tint-ghost: color-mix(in srgb, var(--color-primary) 12%, transparent);
   --hover-border: var(--color-primary);
-  --hover-border-destructive: var(--color-primary-dark);
+  --hover-border-destructive: var(--color-danger);
   --hover-primary-bg: color-mix(in srgb, var(--color-primary) 82%, #ffffff);
-  --hover-destructive-bg: color-mix(in srgb, var(--color-primary-dark) 82%, var(--color-shade));
+  --hover-destructive-bg: color-mix(in srgb, var(--color-danger) 82%, var(--color-shade));
   --hover-transition:
     background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease,
     box-shadow 0.15s ease;
@@ -41,6 +44,9 @@
     --color-text-muted: #a0a3ab;
     --color-accent: #a3aefc;
     --color-accent-text: #a3aefc;
+    --color-primary-dark: #a3aefc;
+    --color-accent-purple: #c08af0;
+    --color-on-purple: #1e2229;
     --color-border: #343a43;
     --color-shade: #ffffff;
     --shadow-rgb: 0 0 0;
@@ -56,6 +62,9 @@
   --color-text-muted: #a0a3ab;
   --color-accent: #a3aefc;
   --color-accent-text: #a3aefc;
+  --color-primary-dark: #a3aefc;
+  --color-accent-purple: #c08af0;
+  --color-on-purple: #1e2229;
   --color-border: #343a43;
   --color-shade: #ffffff;
   --shadow-rgb: 0 0 0;
@@ -175,9 +184,43 @@ button {
 .collection-view-item-delete-button:hover:not(:disabled),
 .admin-delete-button:hover:not(:disabled),
 .admin-member-action-button:hover:not(:disabled) {
-  background-color: var(--hover-tint);
+  background-color: color-mix(in srgb, var(--color-danger) 10%, var(--color-surface));
   border-color: var(--hover-border-destructive);
-  color: var(--color-primary-dark);
+  color: var(--color-danger);
+}
+
+/* Have / ISO filter tabs: hover in the status color */
+.collection-view-tab--have:not(.collection-view-tab--active):hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-accent-green) 12%, var(--color-surface));
+  border-color: var(--color-accent-green);
+}
+
+.collection-view-tab--iso:not(.collection-view-tab--active):hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-accent-purple) 12%, var(--color-surface));
+  border-color: var(--color-accent-purple);
+}
+
+/* Active Have / ISO tabs: filled in the status color */
+.collection-view-tab--have.collection-view-tab--active {
+  border-color: var(--color-accent-green);
+  background-color: var(--color-accent-green);
+  color: #ffffff;
+}
+
+.collection-view-tab--iso.collection-view-tab--active {
+  border-color: var(--color-accent-purple);
+  background-color: var(--color-accent-purple);
+  color: var(--color-on-purple);
+}
+
+.collection-view-tab--have.collection-view-tab--active:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-accent-green) 82%, var(--color-shade));
+  border-color: color-mix(in srgb, var(--color-accent-green) 82%, var(--color-shade));
+}
+
+.collection-view-tab--iso.collection-view-tab--active:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-accent-purple) 82%, var(--color-shade));
+  border-color: color-mix(in srgb, var(--color-accent-purple) 82%, var(--color-shade));
 }
 
 /* Borderless ghost icon button */

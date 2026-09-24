@@ -24,7 +24,7 @@ const INVITE_ROLES = [
   { value: 'viewer', label: 'Viewer' },
 ]
 
-export function Admin({ user, collectionId, onDone }) {
+export function Admin({ user, collectionId, onDone, onCancel = onDone }) {
   const isEditMode = collectionId != null
 
   // Load results are tagged with the collection id they belong to, so results for a
@@ -200,7 +200,7 @@ export function Admin({ user, collectionId, onDone }) {
     return (
       <div>
         <p className="not-found-message">{loadError}</p>
-        <BackButton onClick={onDone} />
+        <BackButton onClick={onCancel} />
       </div>
     )
   }
@@ -209,7 +209,7 @@ export function Admin({ user, collectionId, onDone }) {
     return (
       <div>
         <p className="not-found-message">This collection could not be found.</p>
-        <BackButton onClick={onDone} />
+        <BackButton onClick={onCancel} />
       </div>
     )
   }
@@ -233,7 +233,7 @@ export function Admin({ user, collectionId, onDone }) {
         <CollectionForm
           initialValues={initialValues}
           onSubmit={handleSubmit}
-          onCancel={onDone}
+          onCancel={onCancel}
           submitLabel={isEditMode ? 'Save changes' : 'Create collection'}
           submitting={submitting}
         />
@@ -249,7 +249,7 @@ export function Admin({ user, collectionId, onDone }) {
               </li>
             ))}
           </ul>
-          <BackButton onClick={onDone} />
+          <BackButton onClick={onCancel} />
         </div>
       )}
 
@@ -282,10 +282,6 @@ export function Admin({ user, collectionId, onDone }) {
           {inviteError && <p className="admin-error">{inviteError}</p>}
           {inviteSuccess && <p className="admin-invite-success">{inviteSuccess}</p>}
         </div>
-      )}
-
-      {isEditMode && showWriteControls && (
-        <StandardizeValues collectionId={collectionId} fieldDefs={collection.fieldDefs} />
       )}
 
       {isEditMode && (
@@ -326,6 +322,10 @@ export function Admin({ user, collectionId, onDone }) {
             </ul>
           )}
         </div>
+      )}
+
+      {isEditMode && showWriteControls && (
+        <StandardizeValues collectionId={collectionId} fieldDefs={collection.fieldDefs} />
       )}
 
       {isOwner && (

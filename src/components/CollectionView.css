@@ -112,7 +112,7 @@
 }
 
 .collection-view-error {
-  color: var(--color-primary-dark);
+  color: var(--color-danger);
 }
 
 .collection-view-list {
@@ -421,7 +421,7 @@
 }
 
 .collection-view-item-delete-button {
-  color: var(--color-primary-dark);
+  color: var(--color-danger);
 }
 
 .collection-view-item-delete-confirm-button,
@@ -438,7 +438,7 @@
 }
 
 .collection-view-item-delete-confirm-button {
-  border-color: var(--color-primary-dark);
-  background-color: var(--color-primary-dark);
+  border-color: var(--color-danger);
+  background-color: var(--color-danger);
   color: var(--color-on-danger);
 }

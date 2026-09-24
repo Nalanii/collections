@@ -40,7 +40,7 @@ button.app-header-brand {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 600;
-  color: var(--color-primary-dark);
+  color: var(--color-brand);
 }
 
 .app-header-actions {

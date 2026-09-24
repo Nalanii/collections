@@ -657,7 +657,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
               type="button"
               role="tab"
               aria-selected={activeTab === 'have'}
-              className={`collection-view-tab${activeTab === 'have' ? ' collection-view-tab--active' : ''}`}
+              className={`collection-view-tab collection-view-tab--have${activeTab === 'have' ?' collection-view-tab--active' : ''}`}
               onClick={() => setActiveTab('have')}
             >
               Have
@@ -666,7 +666,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
               type="button"
               role="tab"
               aria-selected={activeTab === 'iso'}
-              className={`collection-view-tab${activeTab === 'iso' ? ' collection-view-tab--active' : ''}`}
+              className={`collection-view-tab collection-view-tab--iso${activeTab === 'iso' ?' collection-view-tab--active' : ''}`}
               onClick={() => setActiveTab('iso')}
             >
               ISO
