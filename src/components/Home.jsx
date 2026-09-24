@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useCollectionsPrefetch } from '../hooks/useCollectionsPrefetch'
 import { subscribeToUserCollections } from '../services/collections'
 import { PendingInvites } from './PendingInvites'
 import { Spinner } from './Spinner'
@@ -21,6 +22,8 @@ export function Home({ user, onCreateCollection, onOpenCollection = () => {} }) 
     })
     return unsubscribe
   }, [user.uid])
+
+  useCollectionsPrefetch(collections?.map((c) => c.id))
 
   const loading = collections === null && !error
 

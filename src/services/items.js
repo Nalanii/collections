@@ -1,5 +1,4 @@
 import {
-  addDoc,
   collection,
   deleteDoc,
   doc,
@@ -7,12 +6,26 @@ import {
   onSnapshot,
   query,
   serverTimestamp,
+  setDoc,
   updateDoc,
   where,
   writeBatch,
 } from 'firebase/firestore'
 import { db } from './firebase'
+import { changedFields } from '../utils/changedFields'
 import { trimFieldValues } from '../utils/trimFieldValues'
+
+// Firestore write promises only resolve once the server acknowledges the write, so
+// offline they'd hang the UI even though the write is safely queued in the local
+// cache. When offline, don't wait; the queued write syncs on reconnect (a later
+// server rejection is only logged).
+function settleWrite(writePromise) {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    writePromise.catch((err) => console.error(err))
+    return Promise.resolve()
+  }
+  return writePromise
+}
 
 function trimNotes(notes) {
   return typeof notes === 'string' ? notes.trim() : notes
@@ -45,15 +58,18 @@ export function subscribeToItems(collectionId, callback) {
 // `status` is `'have'` or `'iso'`, `fields` is a `{ [fieldDefName]: value }`
 // map, `notes` is freeform text. Returns the new item's id.
 export async function addItem(user, collectionId, { status, fields, notes }) {
-  const docRef = await addDoc(collection(db, 'items'), {
-    collectionId,
-    status,
-    fields: trimFieldValues(fields),
-    notes: trimNotes(notes),
-    createdBy: user.uid,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  })
+  const docRef = doc(collection(db, 'items'))
+  await settleWrite(
+    setDoc(docRef, {
+      collectionId,
+      status,
+      fields: trimFieldValues(fields),
+      notes: trimNotes(notes),
+      createdBy: user.uid,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    })
+  )
   return docRef.id
 }
 
@@ -61,13 +77,29 @@ export async function addItem(user, collectionId, { status, fields, notes }) {
 // `collectionId` -- firestore.rules' items/update rule requires
 // `request.resource.data.collectionId == resource.data.collectionId`, so
 // changing an item's parent collection this way would be rejected anyway.
-export function updateItem(itemId, { status, fields, notes }) {
-  return updateDoc(doc(db, 'items', itemId), {
-    status,
-    fields: trimFieldValues(fields),
-    notes: trimNotes(notes),
-    updatedAt: serverTimestamp(),
-  })
+//
+// Only fields that differ from `originalFields` are written, each via its own field
+// path, so an edit made elsewhere (or while this device was offline) to a different
+// field of the same item isn't overwritten. Same-field conflicts are last-write-wins.
+export function updateItem(itemId, { status, fields, originalFields, notes }) {
+  const changed = changedFields(originalFields, trimFieldValues(fields))
+  const fieldUpdates = Object.entries(changed).flatMap(([name, value]) => [
+    // FieldPath (not a "fields.<name>" string) so names containing dots still work.
+    new FieldPath('fields', name),
+    value,
+  ])
+  return settleWrite(
+    updateDoc(
+      doc(db, 'items', itemId),
+      'status',
+      status,
+      'notes',
+      trimNotes(notes),
+      ...fieldUpdates,
+      'updatedAt',
+      serverTimestamp()
+    )
+  )
 }
 
 const MAX_BATCH_WRITES = 500
@@ -91,12 +123,12 @@ export async function applyFieldValueChange(itemIds, fieldName, newValue) {
         serverTimestamp()
       )
     }
-    await batch.commit()
+    await settleWrite(batch.commit())
     changed += chunk.length
   }
   return changed
 }
 
 export function deleteItem(itemId) {
-  return deleteDoc(doc(db, 'items', itemId))
+  return settleWrite(deleteDoc(doc(db, 'items', itemId)))
 }

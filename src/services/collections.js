@@ -5,6 +5,7 @@ import {
   doc,
   FieldPath,
   getDoc,
+  getDocFromCache,
   getDocs,
   onSnapshot,
   query,
@@ -169,6 +170,27 @@ export function deleteCollection(collectionId) {
 // `permission-denied`), `collections` is `[]` and `error` is the Firestore
 // error.
 export function subscribeToUserCollections(uid, callback) {
+  // When the membership snapshot came from the local cache (e.g. offline), read the
+  // collection doc from the cache too rather than waiting on a server round trip that
+  // fails offline. A doc that isn't cached is skipped instead of failing the whole list.
+  async function readCollectionDoc(ref, fromCache) {
+    if (fromCache) {
+      try {
+        return await getDocFromCache(ref)
+      } catch {
+        // Not cached; fall through to a normal read.
+      }
+    }
+    try {
+      return await getDoc(ref)
+    } catch (err) {
+      if (err?.code === 'unavailable') {
+        return null
+      }
+      throw err
+    }
+  }
+
   const membershipsQuery = query(collectionGroup(db, 'members'), where('uid', '==', uid))
   // Each snapshot resolves its collection docs asynchronously, so results can
   // finish out of order. Only the most recent snapshot's result may be applied.
@@ -180,8 +202,11 @@ export function subscribeToUserCollections(uid, callback) {
       try {
         const entries = await Promise.all(
           snapshot.docs.map(async (memberSnap) => {
-            const collectionSnap = await getDoc(memberSnap.ref.parent.parent)
-            if (!collectionSnap.exists()) {
+            const collectionSnap = await readCollectionDoc(
+              memberSnap.ref.parent.parent,
+              snapshot.metadata.fromCache
+            )
+            if (!collectionSnap?.exists()) {
               return null
             }
             return {

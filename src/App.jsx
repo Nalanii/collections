@@ -5,6 +5,7 @@ import { DecorBackground } from './components/DecorBackground'
 import { Header } from './components/Header'
 import { Home } from './components/Home'
 import { Logo } from './components/Logo'
+import { OfflineBanner } from './components/OfflineBanner'
 import { SignIn } from './components/SignIn'
 import { useAuth } from './hooks/useAuth'
 import { useRoute } from './hooks/useRoute'
@@ -79,6 +80,7 @@ function App() {
           </button>
         }
       />
+      <OfflineBanner />
       <div className={`app-content${showHome ? ' decor-host' : ''}`}>
         {showHome && <DecorBackground />}
         <main className="app-main">{content}</main>

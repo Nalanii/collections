@@ -359,7 +359,8 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
       if (editingItemId) {
         await updateItem(editingItemId, {
           status: form.status,
-          fields: { ...form.originalFields, ...trimmedFields },
+          fields: trimmedFields,
+          originalFields: form.originalFields,
           notes: trimmedNotes,
         })
         setEditingItemId(null)
