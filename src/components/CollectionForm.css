@@ -152,6 +152,16 @@
   color: var(--color-text-muted);
 }
 
+.field-def-main-label:has(input:disabled) {
+  opacity: 0.45;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+
+.field-def-main-label input:disabled {
+  cursor: not-allowed;
+}
+
 .field-def-name-input {
   min-width: 0;
 }
