@@ -126,6 +126,22 @@
   color: var(--color-text-muted);
 }
 
+.field-def-affixes {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.field-def-affixes .collection-form-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.field-def-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
 .field-def-name-input {
   min-width: 0;
 }

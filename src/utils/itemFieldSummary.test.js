@@ -34,6 +34,41 @@ describe('summarizeItemFields', () => {
     expect(summarizeItemFields(fieldDefs, { Pages: 0 })).toEqual({ main: '', rest: '0' })
     expect(summarizeItemFields(fieldDefs, undefined)).toEqual({ main: '', rest: '' })
   })
+
+  it('applies a prefix only', () => {
+    const defs = [fieldDefs[0], { ...fieldDefs[1], prefix: 'By ' }]
+    expect(summarizeItemFields(defs, { Title: 'Dune', Author: 'Herbert' })).toEqual({
+      main: 'Dune',
+      rest: 'By Herbert',
+    })
+  })
+
+  it('applies a suffix only, preserving leading whitespace', () => {
+    const defs = [fieldDefs[0], { ...fieldDefs[2], suffix: ' pages' }]
+    expect(summarizeItemFields(defs, { Title: 'Dune', Pages: '385' })).toEqual({
+      main: 'Dune',
+      rest: '385 pages',
+    })
+  })
+
+  it('applies both prefix and suffix', () => {
+    const defs = [fieldDefs[0], { ...fieldDefs[2], prefix: '(', suffix: ')' }]
+    expect(summarizeItemFields(defs, { Title: 'Dune', Pages: 385 }).rest).toBe('(385)')
+  })
+
+  it('omits prefix and suffix for empty values', () => {
+    const defs = [fieldDefs[0], { ...fieldDefs[1], prefix: 'Read: ', suffix: '!' }]
+    expect(summarizeItemFields(defs, { Title: 'Dune', Author: '' })).toEqual({ main: 'Dune', rest: '' })
+    expect(summarizeItemFields(defs, { Title: 'Dune' }).rest).toBe('')
+  })
+
+  it('leaves values unchanged when neither is set', () => {
+    const defs = fieldDefs.map((d) => ({ ...d, prefix: '', suffix: '' }))
+    expect(summarizeItemFields(defs, { Title: 'Dune', Author: 'Herbert', Pages: '412' })).toEqual({
+      main: 'Dune',
+      rest: 'Herbert · 412',
+    })
+  })
 })
 
 describe('isMainField', () => {

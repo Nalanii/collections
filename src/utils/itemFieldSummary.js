@@ -19,7 +19,9 @@ export function summarizeItemFields(fieldDefs, itemFields) {
     if (!isPresent(value)) {
       return
     }
-    ;(isMainField(fieldDefs, index) ? main : rest).push(value)
+    ;(isMainField(fieldDefs, index) ? main : rest).push(
+      `${fieldDef.prefix ?? ''}${value}${fieldDef.suffix ?? ''}`
+    )
   })
   return { main: main.join(' · '), rest: rest.join(' · ') }
 }

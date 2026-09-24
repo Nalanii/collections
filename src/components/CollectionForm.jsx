@@ -102,6 +102,12 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
     )
   }
 
+  function handleFieldTextChange(key, prop, value) {
+    setFieldDefs((rows) =>
+      rows.map((row) => (row._key === key ? { ...row, [prop]: value } : row))
+    )
+  }
+
   function updateOptions(key, update, updateKeys = (keys) => keys) {
     setFieldDefs((rows) =>
       rows.map((row) =>
@@ -166,13 +172,16 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
       name: trimmedName,
       emoji,
       // `options` is only persisted for dropdown fields; switching away drops it.
-      // `main` and `excludeFromSearch` are only persisted when set.
-      fieldDefs: validFieldDefs.map(({ name: fieldName, type, options, main, excludeFromSearch }) => ({
+      // `main`, `excludeFromSearch`, `prefix` and `suffix` are only persisted when set
+      // (prefix/suffix are never trimmed so ' pages' keeps its leading space).
+      fieldDefs: validFieldDefs.map(({ name: fieldName, type, options, main, excludeFromSearch, prefix, suffix }) => ({
         name: fieldName.trim(),
         type,
         ...(type === 'dropdown' && { options: options.map((option) => option.trim()) }),
         ...(main && { main: true }),
         ...(excludeFromSearch && { excludeFromSearch: true }),
+        ...(prefix && { prefix }),
+        ...(suffix && { suffix }),
       })),
     })
   }
@@ -287,6 +296,28 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
                 />
                 Exclude from search
               </label>
+              <div className="field-def-affixes">
+                <input
+                  type="text"
+                  className="collection-form-input"
+                  value={row.prefix ?? ''}
+                  onChange={(event) => handleFieldTextChange(row._key, 'prefix', event.target.value)}
+                  placeholder="Prefix, e.g. Read: "
+                  aria-label="Prefix"
+                />
+                <input
+                  type="text"
+                  className="collection-form-input"
+                  value={row.suffix ?? ''}
+                  onChange={(event) => handleFieldTextChange(row._key, 'suffix', event.target.value)}
+                  placeholder="Suffix, e.g.  pages"
+                  aria-label="Suffix"
+                />
+              </div>
+              <p className="field-def-hint">
+                Shown around the value on item cards. Spaces are kept, so add a leading space to a
+                suffix (" pages") or a trailing space to a prefix ("Read: ").
+              </p>
               {row.type === 'dropdown' && (
                 <div className="field-def-options">
                   {(row.options ?? []).map((option, index, all) => {
