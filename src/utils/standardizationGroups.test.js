@@ -64,8 +64,25 @@ describe('findStandardizationGroups', () => {
     expect(findStandardizationGroups(items('John Smith', 'Joan Smith'), 'Author')).toEqual([])
     expect(findStandardizationGroups(items('Anne Rice', 'Anne Ricci'), 'Author')).toEqual([])
     expect(findStandardizationGroups(items('Stephen King', 'Stephen Kind'), 'Author')).toEqual([])
-    expect(findStandardizationGroups(items('Tolkien', 'Tolkein'), 'Author')).toEqual([])
     expect(findStandardizationGroups(items('Anne Rice', 'Anne Rice Jr'), 'Author')).toEqual([])
+  })
+
+  it('groups "Last, First" with "First Last"', () => {
+    const groups = findStandardizationGroups(items('Stephen King', 'King, Stephen', 'Stephen King'), 'Author')
+    expect(groups).toHaveLength(1)
+    expect(groups[0].suggested).toBe('Stephen King')
+    expect(groups[0].variants).toEqual([
+      { value: 'Stephen King', count: 2 },
+      { value: 'King, Stephen', count: 1 },
+    ])
+  })
+
+  it('does not group different people who share a surname', () => {
+    expect(findStandardizationGroups(items('Stephen King', 'Owen King'), 'Author')).toEqual([])
+  })
+
+  it('groups a one-letter typo in a single long-enough word', () => {
+    expect(findStandardizationGroups(items('Tolkien', 'Tolkein'), 'Author')).toHaveLength(1)
   })
 
   it('ignores empty, missing and non-string values', () => {

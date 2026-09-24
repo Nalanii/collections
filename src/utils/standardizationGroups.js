@@ -2,9 +2,9 @@
 // group into a single canonical spelling. Everything here is a *suggestion*; the
 // matching is deliberately conservative.
 
-const MIN_FUZZY_LENGTH = 8 // normalized length below which only exact matches group
+const MIN_FUZZY_LENGTH = 6 // normalized length below which only exact matches group
 const MIN_FUZZY_TOKEN_LENGTH = 5 // a token that differs must be at least this long
-const LONG_VALUE_LENGTH = 16 // from this length, two edits are tolerated instead of one
+const LONG_VALUE_LENGTH = 14 // from this length, two edits are tolerated instead of one
 
 // Trims and collapses internal whitespace runs, so whitespace-only differences are the
 // same variant.
@@ -37,6 +37,11 @@ export function normalizeForComparison(value) {
     merged.shift()
   }
   return merged.join(' ')
+}
+
+// Normalized key with the words sorted, so "King, Stephen" and "Stephen King" agree.
+export function wordOrderInsensitiveKey(value) {
+  return normalizeForComparison(value).split(' ').sort(compareStrings).join(' ')
 }
 
 // Optimal string alignment distance (edits, deletions, insertions, adjacent swaps).
@@ -119,7 +124,7 @@ export function findStandardizationGroups(items, fieldName) {
   const variants = [...counts].map(([value, count]) => ({
     value,
     count,
-    key: normalizeForComparison(value),
+    key: wordOrderInsensitiveKey(value),
   }))
 
   const parent = variants.map((_, i) => i)
