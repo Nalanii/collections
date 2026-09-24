@@ -7,7 +7,7 @@ import { buildSelectOptions } from '../utils/fieldOptions'
 import { trimFieldValues } from '../utils/trimFieldValues'
 import { findDuplicateItem } from '../utils/duplicateItem'
 import { canWrite, getMemberRole, isViewerRole } from '../utils/permissions'
-import { BackButton, BackChevronIcon } from './BackButton'
+import { BackButton } from './BackButton'
 import { ConfirmDialog } from './ConfirmDialog'
 import { ReadOnlyBanner } from './ReadOnlyBanner'
 import { Select } from './Select'
@@ -295,20 +295,10 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
     setMode('search')
   }
 
-  function handleBackClick() {
-    if (isAddFormDirty()) {
-      setPendingDiscardAction('back')
-      return
-    }
-    onBack()
-  }
-
   function handleConfirmDiscard() {
     const action = pendingDiscardAction
     setPendingDiscardAction(null)
-    if (action === 'back') {
-      onBack()
-    } else if (action === 'search') {
+    if (action === 'search') {
       handleSwitchToSearch()
     } else if (action === 'cancelEdit') {
       setEditingItemId(null)
@@ -442,14 +432,6 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
   return (
     <div className="collection-view-screen">
       <div className="collection-view-header">
-        <button
-          type="button"
-          className="back-button"
-          onClick={handleBackClick}
-          aria-label="Back to collections"
-        >
-          <BackChevronIcon />
-        </button>
         <span className="collection-view-emoji">{collectionData.emoji}</span>
         <span className="collection-view-name">{collectionData.name}</span>
         <button

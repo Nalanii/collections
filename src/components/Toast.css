@@ -10,5 +10,5 @@
 
 .toast-success {
   background-color: var(--color-accent-green);
-  color: var(--color-bg);
+  color: #f4f2eb;
 }

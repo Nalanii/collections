@@ -5,14 +5,15 @@
   --color-text: #1e2229;
   --color-text-muted: #5b5d64;
   --color-primary: #ff5a36;
-  --color-primary-dark: #b3311a;
+  --color-primary-dark: #ff5a36;
   --color-on-primary: #1e2229;
   --color-on-danger: #ffffff;
   --color-accent: #7c8cf8;
   --color-accent-text: #4553c4;
   --color-on-accent: #1e2229;
-  --color-accent-green: #2f6f36;
-  --color-accent-purple: #49326b;
+  --color-accent-green: #387e3f;
+  --color-accent-purple: #7c8cf8;
+  --color-deep-purple: #49326b;
   --color-border: #e8e4da;
   --color-shade: #000000;
   --shadow-rgb: 30 34 41;
@@ -38,11 +39,8 @@
     --color-surface: #1e2228;
     --color-text: #ecebe6;
     --color-text-muted: #a0a3ab;
-    --color-primary-dark: #ff7a5c;
     --color-accent: #a3aefc;
     --color-accent-text: #a3aefc;
-    --color-accent-green: #6fbf78;
-    --color-accent-purple: #b79be0;
     --color-border: #343a43;
     --color-shade: #ffffff;
     --shadow-rgb: 0 0 0;
@@ -56,11 +54,8 @@
   --color-surface: #1e2228;
   --color-text: #ecebe6;
   --color-text-muted: #a0a3ab;
-  --color-primary-dark: #ff7a5c;
   --color-accent: #a3aefc;
   --color-accent-text: #a3aefc;
-  --color-accent-green: #6fbf78;
-  --color-accent-purple: #b79be0;
   --color-border: #343a43;
   --color-shade: #ffffff;
   --shadow-rgb: 0 0 0;
@@ -96,8 +91,8 @@ button {
 }
 
 ::selection {
-  background-color: var(--color-accent);
-  color: var(--color-on-accent);
+  background-color: #7c8cf8;
+  color: #1e2229;
 }
 
 /* ---- Shared button hover treatments (no size/border-width changes) ---- */
