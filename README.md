@@ -78,6 +78,35 @@ re-run:
   process via Task Manager)
 - macOS/Linux: `lsof -ti:8080 | xargs kill`
 
+## Importing from Google Sheets
+
+`scripts/import-sheet.js` bulk-loads a spreadsheet into an **existing**
+collection as items.
+
+1. In Google Sheets, open the tab to import and choose **File → Download →
+   Comma-separated values (.csv)** (this exports only the current tab).
+2. Row 1 must be headers. Headers are matched (case-insensitively) to the
+   collection's field names; `Status` (`have` / `iso`, default `have`) and
+   `Notes` columns are also recognised. Other headers are reported and skipped
+   (or appended to notes with `--unmatched-to-notes`). Empty rows are skipped.
+3. Find the collection id (its doc id under `collections` in the Firestore
+   console) and your Firebase Auth uid; the uid becomes
+   each item's `createdBy`.
+4. Preview, then run:
+
+```bash
+npm run import-sheet -- <collectionId> path/to/file.csv --uid <uid> --dry-run
+npm run import-sheet -- <collectionId> path/to/file.csv --uid <uid>
+```
+
+`--uid` can be replaced by the `IMPORT_UID` env var. To try it locally, set
+`FIRESTORE_EMULATOR_HOST=127.0.0.1:8080` (with the emulator running) and the
+script writes there instead. Without it the script writes to **production**
+using Admin credentials (`GOOGLE_APPLICATION_CREDENTIALS` pointing at a
+service-account key); the target is printed first. `--project <id>` overrides
+the project (default `collections-tracker-nls`). Unit tests for the mapping
+logic: `npm run test:unit`.
+
 ## Deploy
 
 ```bash
@@ -125,6 +154,8 @@ repo secret `FIREBASE_SERVICE_ACCOUNT`. To set it up (or rotate it):
 | `npm run preview` | Preview the production build locally |
 | `npm run lint` | Lint with oxlint |
 | `npm run test:rules` | Run Firestore security rules tests against the emulator |
+| `npm run test:unit` | Run import-script unit tests (no emulator needed) |
+| `npm run import-sheet` | Import a Google Sheets export into a collection (see above) |
 | `npm run deploy` | Build and deploy Hosting + Firestore rules/indexes |
 
 ## Project Structure
