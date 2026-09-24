@@ -115,16 +115,26 @@
 
 .field-def-option-row {
   display: grid;
-  grid-template-columns: 1fr auto auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 0.5rem;
 }
 
 .field-def-row {
   display: grid;
-  grid-template-columns: 1fr auto auto auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto auto;
   align-items: center;
   gap: 0.5rem;
+}
+
+@media (max-width: 600px) {
+  .field-def-row {
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+  }
+
+  .field-def-row .field-def-name-input {
+    grid-column: 1 / -1;
+  }
 }
 
 .field-def-main-label {
@@ -168,6 +178,12 @@
 
 .field-def-row .field-def-type-select {
   width: 8.5rem;
+}
+
+@media (max-width: 600px) {
+  .field-def-row .field-def-type-select {
+    width: auto;
+  }
 }
 
 .field-def-row .field-def-type-select .select-trigger {
