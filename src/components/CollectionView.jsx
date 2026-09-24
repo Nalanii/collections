@@ -5,6 +5,7 @@ import { searchItems } from '../utils/itemSearch'
 import { isMainField, summarizeItemFields } from '../utils/itemFieldSummary'
 import { buildSelectOptions } from '../utils/fieldOptions'
 import { trimFieldValues } from '../utils/trimFieldValues'
+import { findDuplicateItem } from '../utils/duplicateItem'
 import { canWrite, getMemberRole, isViewerRole } from '../utils/permissions'
 import { BackButton, BackChevronIcon } from './BackButton'
 import { ConfirmDialog } from './ConfirmDialog'
@@ -96,6 +97,8 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
   const [pendingDiscardAction, setPendingDiscardAction] = useState(null)
   const [editingItemId, setEditingItemId] = useState(null)
   const [formError, setFormError] = useState(null)
+  // Tied to the `form` object it was raised for, so any edit or reset hides it.
+  const [duplicateWarning, setDuplicateWarning] = useState(null)
   const [saving, setSaving] = useState(false)
   const [focusToken, setFocusToken] = useState(0)
   const [deleteConfirmId, setDeleteConfirmId] = useState(null)
@@ -103,6 +106,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
   const [deleteError, setDeleteError] = useState(null)
   const firstFieldRef = useRef(null)
   const savingRef = useRef(false)
+  const duplicateWarningRef = useRef(null)
 
   const currentCollectionState =
     collectionState.id === collectionId ? collectionState : EMPTY_COLLECTION_STATE
@@ -174,7 +178,15 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
     }
   }, [mode, focusToken])
 
+  useEffect(() => {
+    if (duplicateWarning) {
+      duplicateWarningRef.current?.focus()
+    }
+  }, [duplicateWarning])
+
   const fieldDefs = collectionData?.fieldDefs ?? EMPTY_FIELD_DEFS
+  const activeDuplicateWarning =
+    mode === 'add' && duplicateWarning?.form === form ? duplicateWarning : null
   const rolesLoaded = members !== null
   const myRole = getMemberRole(members, user.uid)
   const isViewer = rolesLoaded && isViewerRole(myRole)
@@ -306,7 +318,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
     setPendingDiscardAction(null)
   }
 
-  async function handleSaveItem() {
+  async function handleSaveItem({ skipDuplicateCheck = false } = {}) {
     if (savingRef.current) {
       return
     }
@@ -327,7 +339,19 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
       setFormError('Fill in at least one field.')
       return
     }
+    if (!skipDuplicateCheck) {
+      const duplicate = findDuplicateItem(items, fieldDefs, trimmedFields, editingItemId)
+      if (duplicate) {
+        setFormError(null)
+        setDuplicateWarning({
+          form,
+          itemName: summarizeItemFields(fieldDefs, duplicate.fields).main,
+        })
+        return
+      }
+    }
     setFormError(null)
+    setDuplicateWarning(null)
     savingRef.current = true
     setSaving(true)
     try {
@@ -536,6 +560,33 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
           </div>
 
           {formError && <p className="collection-view-error">{formError}</p>}
+
+          {activeDuplicateWarning && (
+            <div
+              className="collection-view-duplicate-warning"
+              role="alert"
+              tabIndex={-1}
+              ref={duplicateWarningRef}
+            >
+              <p>Possible duplicate: "{activeDuplicateWarning.itemName}" is already in this collection.</p>
+              <div className="collection-view-add-actions">
+                <button
+                  type="button"
+                  className="collection-view-cancel-edit-button"
+                  onClick={() => setDuplicateWarning(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="collection-view-save-button"
+                  onClick={() => handleSaveItem({ skipDuplicateCheck: true })}
+                >
+                  {editingItemId ? 'Save anyway' : 'Add anyway'}
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="collection-view-add-actions">
             {editingItemId && (
