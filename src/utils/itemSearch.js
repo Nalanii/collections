@@ -6,7 +6,7 @@ const FUSE_OPTIONS = {
 }
 
 // Fuzzy-filters `items` against `query` across each field defined in
-// `fieldDefs` plus `notes`, generously typo-tolerant so a near-miss still
+// `fieldDefs` (skipping any marked `excludeFromSearch`) plus `notes`, generously typo-tolerant so a near-miss still
 // surfaces a match. Returns `items` unchanged (same order) when `query` is
 // empty/whitespace-only, so callers can render the full list without a
 // separate "no query" branch.
@@ -16,7 +16,12 @@ export function searchItems(items, fieldDefs, query) {
     return items
   }
 
-  const keys = [...fieldDefs.map((fieldDef) => ['fields', fieldDef.name]), 'notes']
+  const keys = [
+    ...fieldDefs
+      .filter((fieldDef) => !fieldDef.excludeFromSearch)
+      .map((fieldDef) => ['fields', fieldDef.name]),
+    'notes',
+  ]
   const fuse = new Fuse(items, { ...FUSE_OPTIONS, keys })
   return fuse.search(trimmed).map((result) => result.item)
 }

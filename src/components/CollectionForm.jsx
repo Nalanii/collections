@@ -68,10 +68,13 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
       .map((fieldDef) => [fieldDef._key, validateOptions(fieldDef.options)])
   )
   const hasInvalidOptions = validFieldDefs.some((fieldDef) => optionsErrors.get(fieldDef._key))
+  const searchableCount = fieldDefs.filter((fieldDef) => !fieldDef.excludeFromSearch).length
+  const hasSearchableField = validFieldDefs.some((fieldDef) => !fieldDef.excludeFromSearch)
   const isValid =
     trimmedName !== '' &&
     emoji !== '' &&
     validFieldDefs.length > 0 &&
+    hasSearchableField &&
     !hasDuplicateFieldNames &&
     !hasInvalidOptions
 
@@ -90,6 +93,12 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
   function handleFieldMainChange(key, checked) {
     setFieldDefs((rows) =>
       rows.map((row) => (row._key === key ? { ...row, main: checked } : row))
+    )
+  }
+
+  function handleFieldExcludeChange(key, checked) {
+    setFieldDefs((rows) =>
+      rows.map((row) => (row._key === key ? { ...row, excludeFromSearch: checked } : row))
     )
   }
 
@@ -157,12 +166,13 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
       name: trimmedName,
       emoji,
       // `options` is only persisted for dropdown fields; switching away drops it.
-      // `main` is only persisted when set.
-      fieldDefs: validFieldDefs.map(({ name: fieldName, type, options, main }) => ({
+      // `main` and `excludeFromSearch` are only persisted when set.
+      fieldDefs: validFieldDefs.map(({ name: fieldName, type, options, main, excludeFromSearch }) => ({
         name: fieldName.trim(),
         type,
         ...(type === 'dropdown' && { options: options.map((option) => option.trim()) }),
         ...(main && { main: true }),
+        ...(excludeFromSearch && { excludeFromSearch: true }),
       })),
     })
   }
@@ -172,7 +182,9 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
   const showNameError = nameTouched && trimmedName === ''
   const showEmojiError = emojiTouched && emoji === ''
   const showFieldsError = fieldsTouched && validFieldDefs.length === 0
-  const showDuplicateFieldsError = fieldsTouched && validFieldDefs.length > 0 && hasDuplicateFieldNames
+  const showNoSearchableFieldError =
+    fieldsTouched && validFieldDefs.length > 0 && !hasSearchableField
+  const showDuplicateFieldsError =fieldsTouched && validFieldDefs.length > 0 && hasDuplicateFieldNames
 
   return (
     <form className="collection-form" ref={formRef} onSubmit={handleSubmit} noValidate>
@@ -265,6 +277,15 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
                   onChange={(event) => handleFieldMainChange(row._key, event.target.checked)}
                 />
                 Primary field (max {MAX_MAIN_FIELDS})
+              </label>
+              <label className="field-def-main-label">
+                <input
+                  type="checkbox"
+                  checked={Boolean(row.excludeFromSearch)}
+                  disabled={!row.excludeFromSearch && searchableCount <= 1}
+                  onChange={(event) => handleFieldExcludeChange(row._key, event.target.checked)}
+                />
+                Exclude from search
               </label>
               {row.type === 'dropdown' && (
                 <div className="field-def-options">
@@ -363,6 +384,9 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
         )}
         {showDuplicateFieldsError && (
           <p className="collection-form-error">Field names must be unique.</p>
+        )}
+        {showNoSearchableFieldError && (
+          <p className="collection-form-error">At least one field must be searchable.</p>
         )}
       </div>
 

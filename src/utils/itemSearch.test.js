@@ -82,6 +82,16 @@ describe('searchItems', () => {
     expect(result.map((item) => item.id)).toEqual(['d1'])
   })
 
+  it('ignores fields marked excludeFromSearch but still matches the rest', () => {
+    const excludingFieldDefs = [
+      { name: 'Title', type: 'text' },
+      { name: 'Artist', type: 'text', excludeFromSearch: true },
+    ]
+
+    expect(searchItems(items, excludingFieldDefs, 'Nirvana')).toEqual([])
+    expect(searchItems(items, excludingFieldDefs, 'Nevermind').map((item) => item.id)).toEqual(['2'])
+  })
+
   it('matches a field whose name contains a literal dot', () => {
     const dottedFieldDefs = [...fieldDefs, { name: 'Cat. No.', type: 'text' }]
     const dottedItems = [
