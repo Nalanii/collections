@@ -13,6 +13,7 @@ import { createInvite } from '../services/invites'
 import { canWrite, getMemberRole, isViewerRole } from '../utils/permissions'
 import { ReadOnlyBanner } from './ReadOnlyBanner'
 import { BackButton } from './BackButton'
+import { ConfirmDialog } from './ConfirmDialog'
 import { Select } from './Select'
 import { Spinner } from './Spinner'
 import { StandardizeValues } from './StandardizeValues'
@@ -51,6 +52,21 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
   const [memberBusyKey, setMemberBusyKey] = useState(null)
   const [memberActionError, setMemberActionError] = useState(null)
   const backfilledOwnProfileRef = useRef(false)
+  const [formDirty, setFormDirty] = useState(false)
+  const [pendingDiscard, setPendingDiscard] = useState(false)
+
+  function guardedCancel() {
+    if (!formDirty || submitting) {
+      onCancel()
+      return
+    }
+    setPendingDiscard(true)
+  }
+
+  function handleConfirmDiscard() {
+    setPendingDiscard(false)
+    onCancel()
+  }
 
   useEffect(() => {
     if (!isEditMode) {
@@ -202,7 +218,7 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
     return (
       <div>
         <p className="not-found-message">{loadError}</p>
-        <BackButton onClick={onCancel} />
+        <BackButton onClick={guardedCancel} />
       </div>
     )
   }
@@ -211,7 +227,7 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
     return (
       <div>
         <p className="not-found-message">This collection could not be found.</p>
-        <BackButton onClick={onCancel} />
+        <BackButton onClick={guardedCancel} />
       </div>
     )
   }
@@ -238,7 +254,8 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
         <CollectionForm
           initialValues={initialValues}
           onSubmit={handleSubmit}
-          onCancel={onCancel}
+          onCancel={guardedCancel}
+          onDirtyChange={setFormDirty}
           submitLabel={isEditMode ? 'Save changes' : 'Create collection'}
           submitting={submitting}
           actionsContainer={actionsSlot}
@@ -256,8 +273,19 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
               </li>
             ))}
           </ul>
-          <BackButton onClick={onCancel} />
+          <BackButton onClick={guardedCancel} />
         </div>
+      )}
+
+      {pendingDiscard && (
+        <ConfirmDialog
+          title="Discard changes?"
+          message="You have unsaved changes to this collection. Discard them?"
+          confirmLabel="Discard changes"
+          cancelLabel="Keep editing"
+          onConfirm={handleConfirmDiscard}
+          onCancel={() => setPendingDiscard(false)}
+        />
       )}
 
       {error && <p className="admin-error">{error}</p>}

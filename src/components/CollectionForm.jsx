@@ -32,6 +32,23 @@ function withRowKeys(fieldDefs) {
   }))
 }
 
+function normalizeForDirtyCheck(name, emoji, fieldDefs) {
+  return JSON.stringify({
+    name: name ?? '',
+    emoji: emoji ?? '',
+    fieldDefs: (fieldDefs ?? []).map((fieldDef) => ({
+      name: fieldDef.name ?? '',
+      type: fieldDef.type ?? 'text',
+      options: fieldDef.options ?? [],
+      main: Boolean(fieldDef.main),
+      excludeFromSearch: Boolean(fieldDef.excludeFromSearch),
+      suggestOptions: Boolean(fieldDef.suggestOptions),
+      prefix: fieldDef.prefix ?? '',
+      suffix: fieldDef.suffix ?? '',
+    })),
+  })
+}
+
 export function CollectionForm({
   initialValues,
   onSubmit,
@@ -39,6 +56,7 @@ export function CollectionForm({
   submitLabel,
   submitting = false,
   actionsContainer = null,
+  onDirtyChange,
 }) {
   const [name, setName] = useState(initialValues.name)
   const [emoji, setEmoji] = useState(initialValues.emoji)
@@ -51,6 +69,13 @@ export function CollectionForm({
   const pendingFieldMoveFocusRef = useRef(null)
   const formRef = useRef(null)
   const formId = useId()
+
+  const isDirty =
+    normalizeForDirtyCheck(name, emoji, fieldDefs) !==
+    normalizeForDirtyCheck(initialValues.name, initialValues.emoji, initialValues.fieldDefs)
+  useEffect(() => {
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
 
   // After a reorder, keep focus on the moved option's button (or the other
   // one if the moved option reached an end and that button is now disabled).
