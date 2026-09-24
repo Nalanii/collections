@@ -4,11 +4,19 @@
   padding-bottom: 2rem;
 }
 
+.collection-view-sticky {
+  position: sticky;
+  top: var(--app-header-height);
+  z-index: 5;
+  padding-bottom: 0.25rem;
+  background-color: var(--color-bg);
+}
+
 .collection-view-header {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .collection-view-header .back-button {
@@ -21,12 +29,42 @@
 }
 
 .collection-view-name {
+  position: relative;
   flex: 1;
   min-width: 0;
   font-weight: 600;
   font-size: 1.1rem;
   color: var(--color-text);
+}
+
+.collection-view-name-text {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.collection-view-name-tooltip {
+  display: none;
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  z-index: 20;
+  width: max-content;
+  max-width: min(20rem, 90vw);
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.9rem;
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--color-text) 12%, transparent);
   overflow-wrap: anywhere;
+  pointer-events: none;
+}
+
+.collection-view-name--truncated:hover .collection-view-name-tooltip {
+  display: block;
 }
 
 .collection-view-manage-button {
@@ -44,9 +82,17 @@
   cursor: pointer;
 }
 
+.collection-view-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
 .collection-view-search {
   position: relative;
-  margin-bottom: 0.75rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .collection-view-search-input {
@@ -82,8 +128,8 @@
 
 .collection-view-tabs {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  flex-shrink: 0;
+  gap: 0.35rem;
 }
 
 .collection-view-tab {
@@ -209,10 +255,12 @@
 
 .collection-view-mode-toggle {
   display: flex;
-  gap: 0.5rem;
+  flex-shrink: 0;
+  gap: 0.35rem;
 }
 
 .collection-view-toast {
+  margin-bottom: 0.5rem;
   max-width: 100%;
   overflow-wrap: anywhere;
 }
@@ -230,7 +278,9 @@
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
-  min-height: 44px;
+  height: 2.25rem;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 .collection-view-mode-button--active {

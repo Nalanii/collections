@@ -35,6 +35,11 @@ function App() {
     navigate('/')
   }
 
+  // Back to the collection being edited; a new collection has none, so it goes home.
+  const goToCollection = route.collectionId
+    ? () => navigate(`/collections/${encodeURIComponent(route.collectionId)}`)
+    : goHome
+
   const showAdmin = route.view === 'admin'
   const showCollectionView = route.view === 'collection'
 
@@ -46,11 +51,8 @@ function App() {
         user={user}
         collectionId={route.collectionId ?? undefined}
         onDone={goHome}
-        onCancel={
-          route.collectionId
-            ? () => navigate(`/collections/${encodeURIComponent(route.collectionId)}`)
-            : goHome
-        }
+        onCancel={goToCollection}
+        onSaved={goToCollection}
       />
     )
   } else if (showCollectionView) {

@@ -80,6 +80,27 @@ function GearIcon() {
   )
 }
 
+// Single-line collection name; when it is cut off with an ellipsis, hovering shows the full name.
+function CollectionName({ name }) {
+  const [truncated, setTruncated] = useState(false)
+  return (
+    <span
+      className={`collection-view-name${truncated ? ' collection-view-name--truncated' : ''}`}
+      onMouseEnter={(event) => {
+        const text = event.currentTarget.firstElementChild
+        setTruncated(text.scrollWidth > text.clientWidth)
+      }}
+    >
+      <span className="collection-view-name-text">{name}</span>
+      {truncated && (
+        <span className="collection-view-name-tooltip" role="tooltip">
+          {name}
+        </span>
+      )}
+    </span>
+  )
+}
+
 function emptyFormState() {
   return { fields: {}, originalFields: {}, status: 'have', notes: '' }
 }
@@ -431,9 +452,10 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
 
   return (
     <div className="collection-view-screen">
+      <div className="collection-view-sticky">
       <div className="collection-view-header">
         <span className="collection-view-emoji">{collectionData.emoji}</span>
-        <span className="collection-view-name">{collectionData.name}</span>
+        <CollectionName name={collectionData.name} />
         <button
           type="button"
           className="collection-view-manage-button"
@@ -442,12 +464,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
         >
           <GearIcon />
         </button>
-      </div>
-
-      {isViewer && <ReadOnlyBanner />}
-
-      {showWriteControls && (
-        <div className="collection-view-mode-row">
+        {showWriteControls && (
           <div className="collection-view-mode-toggle" role="group" aria-label="Search or add items">
             <button
               type="button"
@@ -466,16 +483,75 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
               <PlusIcon /> Add
             </button>
           </div>
-          {toast && (
-            <Toast
-              key={toast.id}
-              className="collection-view-toast"
-              message={toast.message}
-              onDismiss={dismissToast}
+        )}
+      </div>
+
+      {toast && (
+        <Toast
+          key={toast.id}
+          className="collection-view-toast"
+          message={toast.message}
+          onDismiss={dismissToast}
+        />
+      )}
+
+      {isViewer && <ReadOnlyBanner />}
+
+      {mode === 'search' && (
+        <div className="collection-view-filter-row">
+          <div className="collection-view-search">
+            <input
+              type="text"
+              className="collection-view-search-input"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search…"
+              aria-label="Search items"
             />
-          )}
+            {query !== '' && (
+              <button
+                type="button"
+                className="collection-view-clear-button"
+                onClick={() => setQuery('')}
+                aria-label="Clear search"
+              >
+                ×
+              </button>
+            )}
+          </div>
+
+          <div className="collection-view-tabs" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'all'}
+              className={`collection-view-tab${activeTab === 'all' ? ' collection-view-tab--active' : ''}`}
+              onClick={() => setActiveTab('all')}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'have'}
+              className={`collection-view-tab collection-view-tab--have${activeTab === 'have' ?' collection-view-tab--active' : ''}`}
+              onClick={() => setActiveTab('have')}
+            >
+              Have
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'iso'}
+              className={`collection-view-tab collection-view-tab--iso${activeTab === 'iso' ?' collection-view-tab--active' : ''}`}
+              onClick={() => setActiveTab('iso')}
+            >
+              ISO
+            </button>
+          </div>
         </div>
       )}
+      </div>
 
       {mode === 'add' && (
         <form
@@ -622,57 +698,6 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
 
       {mode === 'search' && (
         <>
-          <div className="collection-view-search">
-            <input
-              type="text"
-              className="collection-view-search-input"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search…"
-              aria-label="Search items"
-            />
-            {query !== '' && (
-              <button
-                type="button"
-                className="collection-view-clear-button"
-                onClick={() => setQuery('')}
-                aria-label="Clear search"
-              >
-                ×
-              </button>
-            )}
-          </div>
-
-          <div className="collection-view-tabs" role="tablist">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === 'all'}
-              className={`collection-view-tab${activeTab === 'all' ? ' collection-view-tab--active' : ''}`}
-              onClick={() => setActiveTab('all')}
-            >
-              All
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === 'have'}
-              className={`collection-view-tab collection-view-tab--have${activeTab === 'have' ?' collection-view-tab--active' : ''}`}
-              onClick={() => setActiveTab('have')}
-            >
-              Have
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === 'iso'}
-              className={`collection-view-tab collection-view-tab--iso${activeTab === 'iso' ?' collection-view-tab--active' : ''}`}
-              onClick={() => setActiveTab('iso')}
-            >
-              ISO
-            </button>
-          </div>
-
           {itemsError && <p className="collection-view-error">{itemsError}</p>}
           {deleteError && <p className="collection-view-error">{deleteError}</p>}
 

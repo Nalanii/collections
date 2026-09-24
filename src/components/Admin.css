@@ -4,10 +4,29 @@
   gap: 1rem;
 }
 
+.admin-title-row {
+  position: sticky;
+  top: var(--app-header-height);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  background-color: var(--color-bg);
+}
+
 .admin-title {
+  flex: 1;
+  min-width: 0;
   margin: 0;
   font-size: 1.1rem;
   color: var(--color-primary-dark);
+  overflow-wrap: anywhere;
+}
+
+.admin-title-actions {
+  flex-shrink: 0;
 }
 
 .admin-error {

@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { detectOptionRenames, moveOption, validateOptions } from '../utils/fieldOptions'
 import { Select } from './Select'
 import './CollectionForm.css'
@@ -31,7 +32,14 @@ function withRowKeys(fieldDefs) {
   }))
 }
 
-export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel, submitting = false }) {
+export function CollectionForm({
+  initialValues,
+  onSubmit,
+  onCancel,
+  submitLabel,
+  submitting = false,
+  actionsContainer = null,
+}) {
   const [name, setName] = useState(initialValues.name)
   const [emoji, setEmoji] = useState(initialValues.emoji)
   const [fieldDefs, setFieldDefs] = useState(() => withRowKeys(initialValues.fieldDefs))
@@ -41,6 +49,7 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
   const lastAddedKeyRef = useRef(null)
   const pendingMoveFocusRef = useRef(null)
   const formRef = useRef(null)
+  const formId = useId()
 
   // After a reorder, keep focus on the moved option's button (or the other
   // one if the moved option reached an end and that button is now disabled).
@@ -222,8 +231,24 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
     fieldsTouched && validFieldDefs.length > 0 && !hasSearchableField
   const showDuplicateFieldsError =fieldsTouched && validFieldDefs.length > 0 && hasDuplicateFieldNames
 
+  const actions = (
+    <div className="collection-form-actions">
+      <button type="button" className="collection-form-cancel-button" onClick={onCancel}>
+        Cancel
+      </button>
+      <button
+        type="submit"
+        form={formId}
+        className="collection-form-submit-button"
+        disabled={!isValid || submitting}
+      >
+        {submitting ? submittingLabel : submitLabel}
+      </button>
+    </div>
+  )
+
   return (
-    <form className="collection-form" ref={formRef} onSubmit={handleSubmit} noValidate>
+    <form id={formId} className="collection-form" ref={formRef} onSubmit={handleSubmit} noValidate>
       <div className="collection-form-field">
         <label className="collection-form-label" htmlFor="collection-name">
           Name
@@ -460,18 +485,9 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
         )}
       </div>
 
-      <div className="collection-form-actions">
-        <button type="button" className="collection-form-cancel-button" onClick={onCancel}>
-          Cancel
-        </button>
-        <button
-          type="submit"
-          className="collection-form-submit-button"
-          disabled={!isValid || submitting}
-        >
-          {submitting ? submittingLabel : submitLabel}
-        </button>
-      </div>
+      {/* Rendered into the caller's sticky title row when given; the submit button
+          uses the `form` attribute so it still submits from outside the form. */}
+      {actionsContainer ? createPortal(actions, actionsContainer) : actions}
     </form>
   )
 }

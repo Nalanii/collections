@@ -24,7 +24,7 @@ const INVITE_ROLES = [
   { value: 'viewer', label: 'Viewer' },
 ]
 
-export function Admin({ user, collectionId, onDone, onCancel = onDone }) {
+export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved = onDone }) {
   const isEditMode = collectionId != null
 
   // Load results are tagged with the collection id they belong to, so results for a
@@ -38,6 +38,8 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  // DOM slot in the sticky title row where CollectionForm portals its Save/Cancel buttons.
+  const [actionsSlot, setActionsSlot] = useState(null)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState('editor')
   const [inviteError, setInviteError] = useState(null)
@@ -116,7 +118,7 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone }) {
       } else {
         await createCollection(user, values)
       }
-      onDone()
+      onSaved()
     } catch (err) {
       console.error(err)
       setError(
@@ -226,7 +228,10 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone }) {
 
   return (
     <div className="admin-screen">
-      <h2 className="admin-title">{isEditMode ? 'Edit collection' : 'New collection'}</h2>
+      <div className="admin-title-row">
+        <h2 className="admin-title">{isEditMode ? 'Edit collection' : 'New collection'}</h2>
+        <div className="admin-title-actions" ref={setActionsSlot} />
+      </div>
       {isViewer && <ReadOnlyBanner />}
 
       {!isEditMode || showWriteControls ? (
@@ -236,6 +241,7 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone }) {
           onCancel={onCancel}
           submitLabel={isEditMode ? 'Save changes' : 'Create collection'}
           submitting={submitting}
+          actionsContainer={actionsSlot}
         />
       ) : (
         <div className="admin-readonly-summary">

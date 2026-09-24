@@ -1,4 +1,15 @@
+:root {
+  /* Fixed header height (36px logo + 2 * 1rem padding + 1px border); sticky
+     sub-headers offset by this so they stack under the app header. */
+  --app-header-height: calc(36px + 2rem + 1px);
+}
+
 .app-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-sizing: border-box;
+  min-height: var(--app-header-height);
   background-color: var(--color-bg);
   border-bottom: 1px solid var(--color-border);
 }
