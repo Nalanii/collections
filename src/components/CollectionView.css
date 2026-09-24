@@ -170,6 +170,13 @@
   color: var(--color-accent-purple);
 }
 
+.collection-view-item-row-secondary {
+  margin: 0.2rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
 .collection-view-item-row-notes {
   margin: 0.3rem 0 0;
   color: var(--color-text-muted);

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { subscribeToCollection, subscribeToMembers } from '../services/collections'
 import { addItem, deleteItem, subscribeToItems, updateItem } from '../services/items'
 import { searchItems } from '../utils/itemSearch'
+import { isMainField, summarizeItemFields } from '../utils/itemFieldSummary'
 import { buildSelectOptions } from '../utils/fieldOptions'
 import { canWrite, getMemberRole, isViewerRole } from '../utils/permissions'
 import { BackButton, BackChevronIcon } from './BackButton'
@@ -312,6 +313,13 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
       fieldDefs.map((fieldDef) => [fieldDef.name, (form.fields[fieldDef.name] ?? '').trim()])
     )
     const trimmedNotes = form.notes.trim()
+    const missingMain = fieldDefs.filter(
+      (fieldDef, index) => isMainField(fieldDefs, index) && trimmedFields[fieldDef.name] === ''
+    )
+    if (missingMain.length > 0) {
+      setFormError(`Fill in ${missingMain.map((fieldDef) => fieldDef.name).join(' and ')}.`)
+      return
+    }
     const hasAnyValue =
       Object.values(trimmedFields).some((value) => value !== '') || trimmedNotes !== ''
     if (!hasAnyValue) {
@@ -462,6 +470,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
             <div className="collection-view-add-field" key={fieldDef.name}>
               <label className="collection-view-add-label" htmlFor={`add-field-${index}`}>
                 {fieldDef.name}
+                {isMainField(fieldDefs, index) && ' *'}
               </label>
               {fieldDef.type === 'dropdown' ? (
                 <Select
@@ -622,10 +631,10 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
           {displayedItems.length > 0 && (
             <ul className="collection-view-list">
               {displayedItems.map((item) => {
-                const fieldsSummary = fieldDefs
-                  .map((fieldDef) => item.fields?.[fieldDef.name])
-                  .filter((value) => value !== undefined && value !== null && value !== '')
-                  .join(' · ')
+                const { main: fieldsSummary, rest: secondaryFields } = summarizeItemFields(
+                  fieldDefs,
+                  item.fields
+                )
                 return (
                   <li
                     key={item.id}
@@ -637,6 +646,9 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
                         {item.status === 'have' ? 'Have' : 'ISO'}
                       </span>
                     </div>
+                    {secondaryFields && (
+                      <p className="collection-view-item-row-secondary">{secondaryFields}</p>
+                    )}
                     {item.notes && <p className="collection-view-item-row-notes">{item.notes}</p>}
                     {showWriteControls && (
                       <div className="collection-view-item-row-actions">

@@ -15,6 +15,8 @@ const FIELD_TYPES = [
   { value: 'dropdown', label: 'Dropdown' },
 ]
 
+const MAX_MAIN_FIELDS = 2
+
 let nextRowKey = 0
 
 function withRowKeys(fieldDefs) {
@@ -55,6 +57,7 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
     target?.focus()
   }, [fieldDefs])
 
+  const mainCount = fieldDefs.filter((fieldDef) => fieldDef.main).length
   const trimmedName = name.trim()
   const validFieldDefs = fieldDefs.filter((fieldDef) => fieldDef.name.trim() !== '')
   const trimmedFieldNames = validFieldDefs.map((fieldDef) => fieldDef.name.trim())
@@ -81,6 +84,12 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
   function handleFieldTypeChange(key, value) {
     setFieldDefs((rows) =>
       rows.map((row) => (row._key === key ? { ...row, type: value } : row))
+    )
+  }
+
+  function handleFieldMainChange(key, checked) {
+    setFieldDefs((rows) =>
+      rows.map((row) => (row._key === key ? { ...row, main: checked } : row))
     )
   }
 
@@ -148,11 +157,13 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
       name: trimmedName,
       emoji,
       // `options` is only persisted for dropdown fields; switching away drops it.
-      fieldDefs: validFieldDefs.map(({ name: fieldName, type, options }) =>
-        type === 'dropdown'
-          ? { name: fieldName.trim(), type, options: options.map((option) => option.trim()) }
-          : { name: fieldName.trim(), type }
-      ),
+      // `main` is only persisted when set.
+      fieldDefs: validFieldDefs.map(({ name: fieldName, type, options, main }) => ({
+        name: fieldName.trim(),
+        type,
+        ...(type === 'dropdown' && { options: options.map((option) => option.trim()) }),
+        ...(main && { main: true }),
+      })),
     })
   }
 
@@ -246,6 +257,15 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
                   </svg>
                 </button>
               </div>
+              <label className="field-def-main-label">
+                <input
+                  type="checkbox"
+                  checked={Boolean(row.main)}
+                  disabled={!row.main && mainCount >= MAX_MAIN_FIELDS}
+                  onChange={(event) => handleFieldMainChange(row._key, event.target.checked)}
+                />
+                Primary field (max {MAX_MAIN_FIELDS})
+              </label>
               {row.type === 'dropdown' && (
                 <div className="field-def-options">
                   {(row.options ?? []).map((option, index, all) => {
