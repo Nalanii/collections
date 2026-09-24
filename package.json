@@ -11,7 +11,8 @@
     "deploy": "npm run build && firebase deploy --only hosting,firestore",
     "test:rules": "firebase emulators:exec --only firestore \"vitest run tests/firestore.rules.test.js\"",
     "test:unit": "vitest run --exclude tests/firestore.rules.test.js",
-    "import-sheet": "node scripts/import-sheet.js"
+    "import-sheet": "node scripts/import-sheet.js",
+    "trim-item-fields": "node scripts/trim-item-fields.js"
   },
   "dependencies": {
     "firebase": "^12.19.0",

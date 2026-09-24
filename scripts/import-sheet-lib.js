@@ -1,6 +1,8 @@
 // Pure logic for scripts/import-sheet.js. No Firestore or file I/O in here so
 // it can be unit tested directly (tests/import-sheet.test.js).
 
+import { trimFieldValues } from '../src/utils/trimFieldValues.js'
+
 export const MAX_BATCH_SIZE = 500
 
 // RFC 4180 CSV parser: quoted fields, embedded commas/newlines, "" escaped
@@ -166,7 +168,11 @@ export function mapRows(rows, fieldDefs, options = {}) {
 
     const { status, recognised } = normalizeStatus(statusCell)
     if (!recognised) invalidStatusRows.push({ row: sheetRow, value: statusCell })
-    items.push({ status, fields, notes })
+    items.push({
+      status,
+      fields: trimFieldValues(fields),
+      notes: typeof notes === 'string' ? notes.trim() : notes,
+    })
   })
 
   return {

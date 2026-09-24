@@ -4,6 +4,7 @@ import { addItem, deleteItem, subscribeToItems, updateItem } from '../services/i
 import { searchItems } from '../utils/itemSearch'
 import { isMainField, summarizeItemFields } from '../utils/itemFieldSummary'
 import { buildSelectOptions } from '../utils/fieldOptions'
+import { trimFieldValues } from '../utils/trimFieldValues'
 import { canWrite, getMemberRole, isViewerRole } from '../utils/permissions'
 import { BackButton, BackChevronIcon } from './BackButton'
 import { ConfirmDialog } from './ConfirmDialog'
@@ -309,8 +310,8 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
     if (savingRef.current) {
       return
     }
-    const trimmedFields = Object.fromEntries(
-      fieldDefs.map((fieldDef) => [fieldDef.name, (form.fields[fieldDef.name] ?? '').trim()])
+    const trimmedFields = trimFieldValues(
+      Object.fromEntries(fieldDefs.map((fieldDef) => [fieldDef.name, form.fields[fieldDef.name] ?? '']))
     )
     const trimmedNotes = form.notes.trim()
     const missingMain = fieldDefs.filter(

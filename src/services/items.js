@@ -10,6 +10,11 @@ import {
   where,
 } from 'firebase/firestore'
 import { db } from './firebase'
+import { trimFieldValues } from '../utils/trimFieldValues'
+
+function trimNotes(notes) {
+  return typeof notes === 'string' ? notes.trim() : notes
+}
 
 // `callback` is invoked as `callback(items, error)`. On a successful
 // snapshot, `items` is an array of `{ id, ...itemDoc }` for every item
@@ -41,8 +46,8 @@ export async function addItem(user, collectionId, { status, fields, notes }) {
   const docRef = await addDoc(collection(db, 'items'), {
     collectionId,
     status,
-    fields,
-    notes,
+    fields: trimFieldValues(fields),
+    notes: trimNotes(notes),
     createdBy: user.uid,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -57,8 +62,8 @@ export async function addItem(user, collectionId, { status, fields, notes }) {
 export function updateItem(itemId, { status, fields, notes }) {
   return updateDoc(doc(db, 'items', itemId), {
     status,
-    fields,
-    notes,
+    fields: trimFieldValues(fields),
+    notes: trimNotes(notes),
     updatedAt: serverTimestamp(),
   })
 }

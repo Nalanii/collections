@@ -107,6 +107,21 @@ service-account key); the target is printed first. `--project <id>` overrides
 the project (default `collections-tracker-nls`). Unit tests for the mapping
 logic: `npm run test:unit`.
 
+## Trimming existing item whitespace
+
+New and edited items are trimmed automatically. To clean up items saved before
+that, `scripts/trim-item-fields.js` trims leading/trailing whitespace from every
+item's field values and notes (it leaves `updatedAt` alone and only writes
+items that change):
+
+```bash
+npm run trim-item-fields -- --dry-run
+npm run trim-item-fields -- --collection <collectionId>
+```
+
+Omit `--collection` to process all items. Target selection (emulator vs.
+production, `--project`) works the same as the import script.
+
 ## Deploy
 
 ```bash
