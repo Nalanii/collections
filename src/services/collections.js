@@ -71,9 +71,22 @@ export async function createCollection(user, { name, emoji, fieldDefs }) {
     }
   }
 
+  // Best-effort cleanup so no stray collection doc is left behind. The owner
+  // has no member doc yet, so isOwner() would refuse this delete; the rules
+  // therefore allow it via the creator's ownerId (see firestore.rules).
+  let cleanedUp = false
+  try {
+    await deleteDoc(collectionRef)
+    cleanedUp = true
+  } catch {
+    // Leave it; the error below carries collectionId for the caller.
+  }
+
   throw Object.assign(
     new Error(
-      `Failed to create owner membership for collection ${newId} after retries; the collection doc exists but is orphaned.`
+      `Failed to create owner membership for collection ${newId} after retries; ${
+        cleanedUp ? 'the collection doc was removed.' : 'the collection doc exists but is orphaned.'
+      }`
     ),
     { collectionId: newId, cause: lastError }
   )
@@ -157,8 +170,32 @@ export async function updateCollection(
   await updateDoc(collectionRef, { name, emoji, fieldDefs })
 }
 
-export function deleteCollection(collectionId) {
-  return deleteDoc(doc(db, 'collections', collectionId))
+// Firestore does not cascade deletes to subcollections, so this removes the
+// collection doc together with its members, invites and items. The writes are
+// ordered so the collection doc and the owner's own member doc come last
+// (rules authorize the earlier deletes via that membership); when everything
+// fits in 500 writes it is one atomic batch, otherwise the final chunk still
+// holds the owner member + collection doc so rules see them deleted together.
+export async function deleteCollection(collectionId) {
+  const collectionRef = doc(db, 'collections', collectionId)
+  const [itemsSnap, invitesSnap, membersSnap] = await Promise.all([
+    getDocs(query(collection(db, 'items'), where('collectionId', '==', collectionId))),
+    getDocs(collection(db, 'collections', collectionId, 'invites')),
+    getDocs(collection(db, 'collections', collectionId, 'members')),
+  ])
+  const memberDocs = membersSnap.docs
+  const refs = [
+    ...itemsSnap.docs.map((snap) => snap.ref),
+    ...invitesSnap.docs.map((snap) => snap.ref),
+    ...memberDocs.filter((snap) => snap.data().role !== 'owner').map((snap) => snap.ref),
+    ...memberDocs.filter((snap) => snap.data().role === 'owner').map((snap) => snap.ref),
+    collectionRef,
+  ]
+  for (let start = 0; start < refs.length; start += MAX_BATCH_WRITES) {
+    const batch = writeBatch(db)
+    refs.slice(start, start + MAX_BATCH_WRITES).forEach((ref) => batch.delete(ref))
+    await batch.commit()
+  }
 }
 
 // `callback` is invoked as `callback(collections, error)`. On a successful

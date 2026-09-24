@@ -41,7 +41,10 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update: if isOwnerOrEditor(collectionId)
         && request.resource.data.ownerId == resource.data.ownerId;
-      allow delete: if isOwner(collectionId);
+      // The second branch lets the creator delete a just-created collection
+      // whose owner members doc never got written (createCollection cleanup).
+      allow delete: if isOwner(collectionId) ||
+        (isSignedIn() && resource.data.ownerId == request.auth.uid && !isMember(collectionId));
     }
 
     match /collections/{collectionId}/members/{uid} {
@@ -61,7 +64,11 @@ service cloud.firestore {
          && request.resource.data.role in ['editor', 'viewer']
          && request.resource.data.email == request.auth.token.email);
       allow update: if isOwner(collectionId) && request.resource.data.role in ['owner', 'editor', 'viewer'];
+      // An owner may delete their own member doc only as part of deleting the
+      // collection itself (same batch), so they still cannot leave it.
       allow delete: if (isOwner(collectionId) && request.auth.uid != uid) ||
+        (isOwner(collectionId) && request.auth.uid == uid
+         && !existsAfter(/databases/$(database)/documents/collections/$(collectionId))) ||
         (isSignedIn() && request.auth.uid == uid && memberRole(collectionId) != 'owner');
     }
 

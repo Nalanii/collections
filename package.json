@@ -12,7 +12,8 @@
     "test:rules": "firebase emulators:exec --only firestore \"vitest run tests/firestore.rules.test.js\"",
     "test:unit": "vitest run --exclude tests/firestore.rules.test.js",
     "import-sheet": "node scripts/import-sheet.js",
-    "trim-item-fields": "node scripts/trim-item-fields.js"
+    "trim-item-fields": "node scripts/trim-item-fields.js",
+    "cleanup-phantom-collections": "node scripts/cleanup-phantom-collections.js"
   },
   "dependencies": {
     "firebase": "^12.19.0",

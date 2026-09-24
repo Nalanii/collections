@@ -246,6 +246,42 @@ describe('owner (full access)', () => {
   });
 });
 
+describe('owner cascade delete of a collection', () => {
+  beforeEach_seed();
+
+  it('can delete collection, all members (incl. own), invites and items in one batch', async () => {
+    const db = testEnv.authenticatedContext('owner-uid').firestore();
+    const col = db.collection('collections').doc('col1');
+    const batch = db.batch();
+    batch.delete(db.collection('items').doc('item1'));
+    batch.delete(col.collection('invites').doc('invited@example.com'));
+    batch.delete(col.collection('members').doc('editor-uid'));
+    batch.delete(col.collection('members').doc('viewer-uid'));
+    batch.delete(col.collection('members').doc('owner-uid'));
+    batch.delete(col);
+    await assertSucceeds(batch.commit());
+  });
+
+  it('cannot delete own member doc together with an unrelated doc while the collection survives', async () => {
+    const db = testEnv.authenticatedContext('owner-uid').firestore();
+    const col = db.collection('collections').doc('col1');
+    const batch = db.batch();
+    batch.delete(col.collection('members').doc('owner-uid'));
+    batch.delete(db.collection('items').doc('item1'));
+    await assertFails(batch.commit());
+  });
+
+  it('creator can delete a just-created collection that has no members doc', async () => {
+    const db = testEnv.authenticatedContext('bootstrap-owner-uid').firestore();
+    await assertSucceeds(db.collection('collections').doc('col-bootstrap').delete());
+  });
+
+  it('a non-creator cannot delete a collection that has no members doc', async () => {
+    const db = testEnv.authenticatedContext('someone-else-uid').firestore();
+    await assertFails(db.collection('collections').doc('col-bootstrap').delete());
+  });
+});
+
 describe('editor (read/write items, no collection delete)', () => {
   beforeEach_seed();
 
