@@ -198,10 +198,23 @@
   overflow-wrap: anywhere;
 }
 
+/* Holds the toggle plus the toast; the toast wraps below the toggle when there is no room. */
+.collection-view-mode-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 1rem;
+}
+
 .collection-view-mode-toggle {
   display: flex;
   gap: 0.5rem;
-  margin-bottom: 1rem;
+}
+
+.collection-view-toast {
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .collection-view-mode-button {

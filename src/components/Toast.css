@@ -1,0 +1,14 @@
+.toast {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.5rem 0.85rem;
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.toast-success {
+  background-color: var(--color-accent-green);
+  color: var(--color-bg);
+}

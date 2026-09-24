@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { subscribeToCollection, subscribeToMembers } from '../services/collections'
 import { addItem, deleteItem, subscribeToItems, updateItem } from '../services/items'
 import { searchItems } from '../utils/itemSearch'
@@ -12,6 +12,7 @@ import { ConfirmDialog } from './ConfirmDialog'
 import { ReadOnlyBanner } from './ReadOnlyBanner'
 import { Select } from './Select'
 import { SuggestInput } from './SuggestInput'
+import { Toast } from './Toast'
 import './CollectionView.css'
 
 const EMPTY_FIELD_DEFS = []
@@ -105,6 +106,8 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
   const [deleteConfirmId, setDeleteConfirmId] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
   const [deleteError, setDeleteError] = useState(null)
+  const [toast, setToast] = useState(null)
+  const dismissToast = useCallback(() => setToast(null), [])
   const firstFieldRef = useRef(null)
   const savingRef = useRef(false)
   const duplicateWarningRef = useRef(null)
@@ -370,6 +373,8 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
         await addItem(user, collectionId, { status: form.status, fields: trimmedFields, notes: trimmedNotes })
         setForm(emptyFormState())
         setFocusToken((token) => token + 1)
+        const addedName = summarizeItemFields(fieldDefs, trimmedFields).main
+        setToast({ id: Date.now(), message: addedName ? `Added: ${addedName}` : 'Item added' })
       }
     } catch (err) {
       console.error(err)
@@ -460,23 +465,33 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
       {isViewer && <ReadOnlyBanner />}
 
       {showWriteControls && (
-        <div className="collection-view-mode-toggle" role="group" aria-label="Search or add items">
-          <button
-            type="button"
-            aria-pressed={mode === 'search'}
-            className={`collection-view-mode-button${mode === 'search' ? ' collection-view-mode-button--active' : ''}`}
-            onClick={handleSwitchToSearchTab}
-          >
-            <SearchIcon /> Search
-          </button>
-          <button
-            type="button"
-            aria-pressed={mode === 'add'}
-            className={`collection-view-mode-button${mode === 'add' ? ' collection-view-mode-button--active' : ''}`}
-            onClick={handleSwitchToAdd}
-          >
-            <PlusIcon /> Add
-          </button>
+        <div className="collection-view-mode-row">
+          <div className="collection-view-mode-toggle" role="group" aria-label="Search or add items">
+            <button
+              type="button"
+              aria-pressed={mode === 'search'}
+              className={`collection-view-mode-button${mode === 'search' ? ' collection-view-mode-button--active' : ''}`}
+              onClick={handleSwitchToSearchTab}
+            >
+              <SearchIcon /> Search
+            </button>
+            <button
+              type="button"
+              aria-pressed={mode === 'add'}
+              className={`collection-view-mode-button${mode === 'add' ? ' collection-view-mode-button--active' : ''}`}
+              onClick={handleSwitchToAdd}
+            >
+              <PlusIcon /> Add
+            </button>
+          </div>
+          {toast && (
+            <Toast
+              key={toast.id}
+              className="collection-view-toast"
+              message={toast.message}
+              onDismiss={dismissToast}
+            />
+          )}
         </div>
       )}
 
