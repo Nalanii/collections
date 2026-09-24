@@ -437,6 +437,10 @@
   color: var(--color-text);
 }
 
+.collection-view-duplicate-warning:focus {
+  outline: none;
+}
+
 .collection-view-duplicate-warning p {
   margin: 0;
 }

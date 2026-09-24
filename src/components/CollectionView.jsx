@@ -427,6 +427,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
   function handleFormKeyDown(event) {
     if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
       event.preventDefault()
+      if (activeDuplicateWarning) return
       handleSaveItem()
     }
   }
@@ -674,7 +675,12 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
               ref={duplicateWarningRef}
             >
               <p>Possible duplicate: "{activeDuplicateWarning.itemName}" is already in this collection.</p>
-              <div className="collection-view-add-actions">
+            </div>
+          )}
+
+          <div className="collection-view-add-actions">
+            {activeDuplicateWarning ? (
+              <>
                 <button
                   type="button"
                   className="collection-view-cancel-edit-button"
@@ -684,27 +690,29 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
                 </button>
                 <button
                   type="button"
-                  className="collection-view-save-button"
+                  className="collection-view-cancel-edit-button"
                   onClick={() => handleSaveItem({ skipDuplicateCheck: true })}
                 >
                   {editingItemId ? 'Save anyway' : 'Add anyway'}
                 </button>
-              </div>
-            </div>
-          )}
-
-          <div className="collection-view-add-actions">
-            {editingItemId && (
-              <button
-                type="button"
-                className="collection-view-cancel-edit-button"
-                onClick={handleCancelEdit}
-                disabled={saving}
-              >
-                Cancel
-              </button>
+              </>
+            ) : (
+              editingItemId && (
+                <button
+                  type="button"
+                  className="collection-view-cancel-edit-button"
+                  onClick={handleCancelEdit}
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+              )
             )}
-            <button type="submit" className="collection-view-save-button" disabled={saving}>
+            <button
+              type="submit"
+              className="collection-view-save-button"
+              disabled={saving || Boolean(activeDuplicateWarning)}
+            >
               {saving ? 'Saving…' : editingItemId ? 'Update item' : 'Save item'}
             </button>
           </div>
