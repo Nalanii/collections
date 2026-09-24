@@ -85,6 +85,28 @@
   gap: 0.5rem;
 }
 
+.field-def {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.field-def-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-left: 1rem;
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--color-border);
+}
+
+.field-def-option-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .field-def-row {
   display: grid;
   grid-template-columns: 1fr auto auto;

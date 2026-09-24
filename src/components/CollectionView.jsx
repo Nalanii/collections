@@ -2,10 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { subscribeToCollection, subscribeToMembers } from '../services/collections'
 import { addItem, deleteItem, subscribeToItems, updateItem } from '../services/items'
 import { searchItems } from '../utils/itemSearch'
+import { buildSelectOptions } from '../utils/fieldOptions'
 import { canWrite, getMemberRole, isViewerRole } from '../utils/permissions'
 import { BackButton, BackChevronIcon } from './BackButton'
 import { ConfirmDialog } from './ConfirmDialog'
 import { ReadOnlyBanner } from './ReadOnlyBanner'
+import { Select } from './Select'
 import './CollectionView.css'
 
 const EMPTY_FIELD_DEFS = []
@@ -458,14 +460,25 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
               <label className="collection-view-add-label" htmlFor={`add-field-${index}`}>
                 {fieldDef.name}
               </label>
-              <input
-                id={`add-field-${index}`}
-                type={fieldDef.type === 'number' ? 'number' : 'text'}
-                className="collection-view-add-input"
-                value={form.fields[fieldDef.name] ?? ''}
-                onChange={(event) => handleFieldChange(fieldDef.name, event.target.value)}
-                ref={index === 0 ? firstFieldRef : undefined}
-              />
+              {fieldDef.type === 'dropdown' ? (
+                <Select
+                  id={`add-field-${index}`}
+                  className="collection-view-add-select"
+                  options={buildSelectOptions(fieldDef.options, form.fields[fieldDef.name] ?? '')}
+                  value={form.fields[fieldDef.name] ?? ''}
+                  onChange={(newValue) => handleFieldChange(fieldDef.name, newValue)}
+                  ariaLabel={fieldDef.name}
+                />
+              ) : (
+                <input
+                  id={`add-field-${index}`}
+                  type={fieldDef.type === 'number' ? 'number' : 'text'}
+                  className="collection-view-add-input"
+                  value={form.fields[fieldDef.name] ?? ''}
+                  onChange={(event) => handleFieldChange(fieldDef.name, event.target.value)}
+                  ref={index === 0 ? firstFieldRef : undefined}
+                />
+              )}
             </div>
           ))}
 

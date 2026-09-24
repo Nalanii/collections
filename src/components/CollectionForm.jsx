@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { validateOptions } from '../utils/fieldOptions'
 import { Select } from './Select'
 import './CollectionForm.css'
 
@@ -11,6 +12,7 @@ const EMOJI_OPTIONS = [
 const FIELD_TYPES = [
   { value: 'text', label: 'Text' },
   { value: 'number', label: 'Number' },
+  { value: 'dropdown', label: 'Dropdown' },
 ]
 
 let nextRowKey = 0
@@ -32,8 +34,15 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
   const validFieldDefs = fieldDefs.filter((fieldDef) => fieldDef.name.trim() !== '')
   const trimmedFieldNames = validFieldDefs.map((fieldDef) => fieldDef.name.trim())
   const hasDuplicateFieldNames = new Set(trimmedFieldNames).size !== trimmedFieldNames.length
+  const hasInvalidOptions = validFieldDefs.some(
+    (fieldDef) => fieldDef.type === 'dropdown' && validateOptions(fieldDef.options) !== null
+  )
   const isValid =
-    trimmedName !== '' && emoji !== '' && validFieldDefs.length > 0 && !hasDuplicateFieldNames
+    trimmedName !== '' &&
+    emoji !== '' &&
+    validFieldDefs.length > 0 &&
+    !hasDuplicateFieldNames &&
+    !hasInvalidOptions
 
   function handleFieldNameChange(key, value) {
     setFieldDefs((rows) =>
@@ -45,6 +54,25 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
     setFieldDefs((rows) =>
       rows.map((row) => (row._key === key ? { ...row, type: value } : row))
     )
+  }
+
+  function updateOptions(key, update) {
+    setFieldDefs((rows) =>
+      rows.map((row) => (row._key === key ? { ...row, options: update(row.options ?? []) } : row))
+    )
+  }
+
+  function handleOptionChange(key, index, value) {
+    updateOptions(key, (options) => options.map((option, i) => (i === index ? value : option)))
+  }
+
+  function handleAddOption(key) {
+    updateOptions(key, (options) => [...options, ''])
+  }
+
+  function handleRemoveOption(key, index) {
+    updateOptions(key, (options) => options.filter((_, i) => i !== index))
+    setFieldsTouched(true)
   }
 
   function handleAddField() {
@@ -69,10 +97,12 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
     onSubmit({
       name: trimmedName,
       emoji,
-      fieldDefs: validFieldDefs.map(({ name: fieldName, type }) => ({
-        name: fieldName.trim(),
-        type,
-      })),
+      // `options` is only persisted for dropdown fields; switching away drops it.
+      fieldDefs: validFieldDefs.map(({ name: fieldName, type, options }) =>
+        type === 'dropdown'
+          ? { name: fieldName.trim(), type, options: options.map((option) => option.trim()) }
+          : { name: fieldName.trim(), type }
+      ),
     })
   }
 
@@ -126,7 +156,8 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
         <span className="collection-form-label">Fields</span>
         <div className="field-def-rows">
           {fieldDefs.map((row) => (
-            <div className="field-def-row" key={row._key}>
+            <div className="field-def" key={row._key}>
+            <div className="field-def-row">
               <input
                 type="text"
                 className="collection-form-input field-def-name-input"
@@ -164,6 +195,49 @@ export function CollectionForm({ initialValues, onSubmit, onCancel, submitLabel,
                   />
                 </svg>
               </button>
+            </div>
+            {row.type === 'dropdown' && (
+              <div className="field-def-options">
+                {(row.options ?? []).map((option, index) => (
+                  <div className="field-def-option-row" key={index}>
+                    <input
+                      type="text"
+                      className="collection-form-input"
+                      value={option}
+                      onChange={(event) => handleOptionChange(row._key, index, event.target.value)}
+                      onBlur={() => setFieldsTouched(true)}
+                      placeholder="Option"
+                      aria-label={`Option ${index + 1}`}
+                    />
+                    <button
+                      type="button"
+                      className="field-def-remove-button"
+                      onClick={() => handleRemoveOption(row._key, index)}
+                      aria-label={`Remove option ${index + 1}`}
+                    >
+                      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                        <path
+                          d="M3.5 3.5l9 9m0-9l-9 9"
+                          stroke="currentColor"
+                          strokeWidth="1.75"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className="field-def-add-button"
+                  onClick={() => handleAddOption(row._key)}
+                >
+                  + Add option
+                </button>
+                {fieldsTouched && row.name.trim() !== '' && validateOptions(row.options) && (
+                  <p className="collection-form-error">{validateOptions(row.options)}</p>
+                )}
+              </div>
+            )}
             </div>
           ))}
         </div>

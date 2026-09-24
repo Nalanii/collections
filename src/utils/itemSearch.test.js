@@ -68,6 +68,20 @@ describe('searchItems', () => {
     expect(result.map((item) => item.id).sort()).toEqual(['m1', 'm2'])
   })
 
+  it('matches dropdown field values like text', () => {
+    const dropdownFieldDefs = [
+      { name: 'Title', type: 'text' },
+      { name: 'Condition', type: 'dropdown', options: ['Mint', 'Good', 'Fair'] },
+    ]
+    const dropdownItems = [
+      { id: 'd1', status: 'have', notes: '', fields: { Title: 'Rumours', Condition: 'Mint' } },
+      { id: 'd2', status: 'have', notes: '', fields: { Title: 'Abbey Road', Condition: 'Good'} },
+    ]
+
+    const result = searchItems(dropdownItems, dropdownFieldDefs, 'Mint')
+    expect(result.map((item) => item.id)).toEqual(['d1'])
+  })
+
   it('matches a field whose name contains a literal dot', () => {
     const dottedFieldDefs = [...fieldDefs, { name: 'Cat. No.', type: 'text' }]
     const dottedItems = [

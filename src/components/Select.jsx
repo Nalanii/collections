@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import './Select.css'
 
-export function Select({ options, value, onChange, ariaLabel, className = '' }) {
+export function Select({ options, value, onChange, ariaLabel, className = '', id }) {
   const [open, setOpen] = useState(false)
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
   const [syncedHighlightKey, setSyncedHighlightKey] = useState(null)
@@ -98,6 +98,7 @@ export function Select({ options, value, onChange, ariaLabel, className = '' }) 
     <div className={`select-root${className ? ` ${className}` : ''}`} ref={rootRef}>
       <button
         ref={buttonRef}
+        id={id}
         type="button"
         className="select-trigger"
         aria-haspopup="listbox"
