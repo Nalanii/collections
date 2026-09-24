@@ -1,3 +1,6 @@
+// En spaces (not collapsed by HTML) give the dot extra room in the card header.
+const MAIN_SEPARATOR = ' · '
+
 function isPresent(value) {
   return value !== undefined && value !== null && value !== ''
 }
@@ -9,8 +12,9 @@ export function isMainField(fieldDefs, index) {
     : index === 0
 }
 
-// Splits an item's field values into the prominent "main" line and the
-// secondary line, in field-definition order, skipping empty values.
+// Splits an item's field values into the prominent "main" line (a joined
+// string) and the secondary fields (an array of { name, text }), in
+// field-definition order, skipping empty values.
 export function summarizeItemFields(fieldDefs, itemFields) {
   const main = []
   const rest = []
@@ -19,9 +23,12 @@ export function summarizeItemFields(fieldDefs, itemFields) {
     if (!isPresent(value)) {
       return
     }
-    ;(isMainField(fieldDefs, index) ? main : rest).push(
-      `${fieldDef.prefix ?? ''}${value}${fieldDef.suffix ?? ''}`
-    )
+    const text = `${fieldDef.prefix ?? ''}${value}${fieldDef.suffix ?? ''}`
+    if (isMainField(fieldDefs, index)) {
+      main.push(text)
+    } else {
+      rest.push({ name: fieldDef.name, text })
+    }
   })
-  return { main: main.join(' · '), rest: rest.join(' · ') }
+  return { main: main.join(MAIN_SEPARATOR), rest }
 }

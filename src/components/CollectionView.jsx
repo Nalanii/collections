@@ -708,8 +708,14 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
                         {item.status === 'have' ? 'Have' : 'ISO'}
                       </span>
                     </div>
-                    {secondaryFields && (
-                      <p className="collection-view-item-row-secondary">{secondaryFields}</p>
+                    {secondaryFields.length > 0 && (
+                      <ul className="collection-view-item-row-secondary">
+                        {secondaryFields.map((field) => (
+                          <li className="collection-view-item-row-chip" key={field.name}>
+                            {field.text}
+                          </li>
+                        ))}
+                      </ul>
                     )}
                     {item.notes && <p className="collection-view-item-row-notes">{item.notes}</p>}
                     {showWriteControls && (
