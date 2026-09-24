@@ -69,6 +69,7 @@ export function Select({ options, value, onChange, ariaLabel, className = '', id
   }
 
   function handleButtonKeyDown(event) {
+    if (event.ctrlKey || event.metaKey || event.altKey) return
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
       openList()
@@ -76,6 +77,11 @@ export function Select({ options, value, onChange, ariaLabel, className = '', id
   }
 
   function handleListKeyDown(event) {
+    if (event.ctrlKey || event.metaKey || event.altKey) {
+      // Let shortcuts like Ctrl+Enter (save) bubble to the form, without leaving a stale open list
+      closeList()
+      return
+    }
     if (event.key === 'ArrowDown') {
       event.preventDefault()
       setHighlightedIndex((index) => Math.min(index + 1, options.length - 1))
