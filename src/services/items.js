@@ -14,14 +14,29 @@ import {
 import { db } from './firebase'
 import { changedFields } from '../utils/changedFields'
 import { trimFieldValues } from '../utils/trimFieldValues'
+import { clearListenerPending, reportRejectedWrite, setListenerPending } from './syncStatus'
 
 // Firestore write promises only resolve once the server acknowledges the write, so
 // offline they'd hang the UI even though the write is safely queued in the local
 // cache. When offline, don't wait; the queued write syncs on reconnect (a later
-// server rejection is only logged).
-function settleWrite(writePromise) {
+// server rejection is logged and reported to the sync status store so the UI can
+// tell the user; see syncStatus.js for the reload-while-offline limit).
+//
+// `pendingDocIds` are docs to count as pending until the write settles. Snapshots
+// cover most writes, but a locally deleted doc vanishes from them, so deletes are
+// registered explicitly (the store unions these with snapshot ids, no double count).
+function settleWrite(writePromise, pendingDocIds = []) {
+  if (pendingDocIds.length > 0) {
+    const pendingKey = Symbol('pending write')
+    setListenerPending(pendingKey, pendingDocIds)
+    const clear = () => clearListenerPending(pendingKey)
+    writePromise.then(clear, clear)
+  }
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-    writePromise.catch((err) => console.error(err))
+    writePromise.catch((err) => {
+      console.error(err)
+      reportRejectedWrite()
+    })
     return Promise.resolve()
   }
   return writePromise
@@ -41,15 +56,27 @@ function trimNotes(notes) {
 // `error` is the Firestore error.
 export function subscribeToItems(collectionId, callback) {
   const itemsQuery = query(collection(db, 'items'), where('collectionId', '==', collectionId))
-  return onSnapshot(
+  // Each listener reports its own docs with unacknowledged local writes to the sync
+  // status store, which dedupes across listeners (e.g. prefetch + open collection).
+  const listenerKey = Symbol(collectionId)
+  const unsubscribe = onSnapshot(
     itemsQuery,
     (snapshot) => {
+      setListenerPending(
+        listenerKey,
+        snapshot.docs.filter((docSnap) => docSnap.metadata.hasPendingWrites).map((docSnap) => docSnap.id)
+      )
       callback(snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() })))
     },
     (error) => {
+      clearListenerPending(listenerKey)
       callback([], error)
     }
   )
+  return () => {
+    unsubscribe()
+    clearListenerPending(listenerKey)
+  }
 }
 
 // Creates a new item doc in the top-level `items` collection. `user` is the
@@ -130,5 +157,5 @@ export async function applyFieldValueChange(itemIds, fieldName, newValue) {
 }
 
 export function deleteItem(itemId) {
-  return settleWrite(deleteDoc(doc(db, 'items', itemId)))
+  return settleWrite(deleteDoc(doc(db, 'items', itemId)), [itemId])
 }
