@@ -102,7 +102,12 @@ service cloud.firestore {
     }
 
     match /items/{itemId} {
-      allow read: if isMember(resource.data.collectionId);
+      // The `resource == null` branch lets a signed-in user read an item that
+      // doesn't exist (it only reveals that the id is unused). updateItem and
+      // updateCollection re-read items inside transactions, and an item deleted by
+      // another editor must read back as missing (a conflict the UI can explain)
+      // rather than failing with permission-denied.
+      allow read: if (isSignedIn() && resource == null) || isMember(resource.data.collectionId);
       allow create: if isOwnerOrEditor(request.resource.data.collectionId);
       allow update: if isOwnerOrEditor(resource.data.collectionId)
         && request.resource.data.collectionId == resource.data.collectionId;

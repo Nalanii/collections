@@ -9,7 +9,9 @@ import {
   subscribeToMembers,
   updateCollection,
 } from '../services/collections'
+import { isConflictError } from '../services/conflicts'
 import { createInvite } from '../services/invites'
+import { changedCollectionParts, describeCollectionPart } from '../utils/editConflicts'
 import { canWrite, getMemberRole, isViewerRole } from '../utils/permissions'
 import { ReadOnlyBanner } from './ReadOnlyBanner'
 import { BackButton } from './BackButton'
@@ -24,6 +26,15 @@ const INVITE_ROLES = [
   { value: 'editor', label: 'Editor' },
   { value: 'viewer', label: 'Viewer' },
 ]
+
+function collectionSnapshot(collection) {
+  return {
+    name: collection.name,
+    emoji: collection.emoji,
+    fieldDefs: collection.fieldDefs ?? [],
+    updatedAt: collection.updatedAt ?? null,
+  }
+}
 
 export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved = onDone }) {
   const isEditMode = collectionId != null
@@ -54,6 +65,20 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
   const backfilledOwnProfileRef = useRef(false)
   const [formDirty, setFormDirty] = useState(false)
   const [pendingDiscard, setPendingDiscard] = useState(false)
+  // The collection as the edit form was opened with it. The form keeps editing this
+  // snapshot while live updates arrive, and saves compare against it to detect
+  // concurrent edits. `version` remounts the form when the editor loads the latest.
+  const [base, setBase] = useState(null)
+  // Set when a save was refused because someone else changed the same thing:
+  // `{ conflictingKeys, values }`, where `values` is what the editor tried to save.
+  const [conflict, setConflict] = useState(null)
+  const currentBase = isEditMode && base?.id === collectionId ? base : null
+
+  // Capture the base snapshot once the collection first loads (adjusted during
+  // render, not in an effect, so the form never mounts without it).
+  if (isEditMode && collection != null && currentBase === null) {
+    setBase({ id: collectionId, version: 0, values: collectionSnapshot(collection) })
+  }
 
   function guardedCancel() {
     if (!formDirty || submitting) {
@@ -125,23 +150,40 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
     )
   }, [isEditMode, collection, members, collectionId, user.uid, user.email, user.displayName])
 
-  async function handleSubmit(values) {
+  async function handleSubmit(values, { force = false } = {}) {
     setError(null)
+    setConflict(null)
     setSubmitting(true)
     try {
       if (isEditMode) {
-        await updateCollection(collectionId, values)
+        await updateCollection(collectionId, { ...values, original: currentBase.values, force })
       } else {
         await createCollection(user, values)
       }
       onSaved()
     } catch (err) {
+      if (isConflictError(err) && err.reason === 'changed') {
+        setConflict({ conflictingKeys: err.conflictingKeys, values })
+        setSubmitting(false)
+        return
+      }
       console.error(err)
       setError(
         isEditMode ? 'Could not save changes. Please try again.' : 'Could not create collection. Please try again.'
       )
       setSubmitting(false)
     }
+  }
+
+  // Discards the editor's changes and reopens the form on the latest saved version.
+  function handleLoadLatest() {
+    setBase({ id: collectionId, version: currentBase.version + 1, values: collectionSnapshot(collection) })
+    setConflict(null)
+    setError(null)
+  }
+
+  function handleOverwrite() {
+    handleSubmit(conflict.values, { force: true })
   }
 
   async function handleInviteSubmit(event) {
@@ -232,9 +274,13 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
     )
   }
 
-  const initialValues = isEditMode
-    ? { name: collection.name, emoji: collection.emoji, fieldDefs: collection.fieldDefs ?? [] }
-    : EMPTY_VALUES
+  const initialValues = isEditMode ? currentBase?.values ?? collectionSnapshot(collection) : EMPTY_VALUES
+  // Someone else saved a change to this collection since the form was opened.
+  const changedByOthers =
+    isEditMode &&
+    currentBase !== null &&
+    !submitting &&
+    changedCollectionParts(currentBase.values, collection).length > 0
 
   const isOwner = isEditMode && collection.ownerId === user.uid
   const rolesLoaded = members !== null
@@ -250,8 +296,63 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
       </div>
       {isViewer && <ReadOnlyBanner />}
 
+      {showWriteControls && (conflict || changedByOthers) && (
+        <div className="admin-conflict" role={conflict ? 'alert' : 'status'}>
+          {conflict ? (
+            <p>
+              Someone else changed this collection&apos;s{' '}
+              {conflict.conflictingKeys.map(describeCollectionPart).join(' and ')} while you were
+              editing, so your changes were not saved. Load the latest version (your changes are
+              discarded) or overwrite it with yours.
+            </p>
+          ) : (
+            <p>
+              Someone else changed this collection while you were editing. Saving keeps their changes
+              unless you changed the same thing.
+            </p>
+          )}
+          <details className="admin-conflict-review">
+            <summary>Review latest version</summary>
+            <p className="admin-readonly-summary-name">
+              {collection.emoji ? `${collection.emoji} ` : ''}
+              {collection.name}
+            </p>
+            <ul className="admin-readonly-summary-fields">
+              {(collection.fieldDefs ?? []).map((fieldDef) => (
+                <li key={fieldDef.name}>
+                  {fieldDef.name} ({fieldDef.type})
+                  {fieldDef.type === 'dropdown' && fieldDef.options?.length > 0 &&
+                    `: ${fieldDef.options.join(', ')}`}
+                </li>
+              ))}
+            </ul>
+          </details>
+          <div className="admin-conflict-actions">
+            <button
+              type="button"
+              className="admin-conflict-button"
+              onClick={handleLoadLatest}
+              disabled={submitting}
+            >
+              {formDirty ? 'Discard mine and load latest' : 'Load latest'}
+            </button>
+            {conflict && (
+              <button
+                type="button"
+                className="admin-conflict-button"
+                onClick={handleOverwrite}
+                disabled={submitting}
+              >
+                Overwrite with mine
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {!isEditMode || showWriteControls ? (
         <CollectionForm
+          key={currentBase ? `${collectionId}-${currentBase.version}` : 'new'}
           initialValues={initialValues}
           onSubmit={handleSubmit}
           onCancel={guardedCancel}

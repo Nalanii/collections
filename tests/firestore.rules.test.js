@@ -831,6 +831,71 @@ describe('invite email case sensitivity (rules do verbatim string comparison)', 
   });
 });
 
+// updateItem / updateCollection re-read docs inside transactions to detect
+// concurrent edits (issue #60). An item deleted by another editor must read back
+// as missing rather than failing with permission-denied.
+describe('concurrent-edit transactions', () => {
+  beforeEach_seed();
+
+  it('an editor can read a deleted (missing) item inside a transaction', async () => {
+    const db = testEnv.authenticatedContext('editor-uid').firestore();
+    await assertSucceeds(
+      db.runTransaction(async (transaction) => {
+        const snap = await transaction.get(db.collection('items').doc('deleted-item'));
+        expect(snap.exists).toBe(false);
+      })
+    );
+  });
+
+  it('unauthenticated users still cannot read a missing item', async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertFails(db.collection('items').doc('deleted-item').get());
+  });
+
+  it('a non-member still cannot read an existing item', async () => {
+    const db = testEnv.authenticatedContext('outsider-uid').firestore();
+    await assertFails(db.collection('items').doc('item1').get());
+  });
+
+  it('a non-member still cannot list items by collectionId', async () => {
+    const db = testEnv.authenticatedContext('outsider-uid').firestore();
+    await assertFails(db.collection('items').where('collectionId', '==', 'col1').get());
+  });
+
+  it('an editor can re-read and update an item with updatedAt in a transaction', async () => {
+    const db = testEnv.authenticatedContext('editor-uid').firestore();
+    const ref = db.collection('items').doc('item1');
+    await assertSucceeds(
+      db.runTransaction(async (transaction) => {
+        await transaction.get(ref);
+        transaction.update(ref, { status: 'iso', updatedAt: new Date() });
+      })
+    );
+  });
+
+  it('an editor can re-read and update a collection with updatedAt in a transaction', async () => {
+    const db = testEnv.authenticatedContext('editor-uid').firestore();
+    const ref = db.collection('collections').doc('col1');
+    await assertSucceeds(
+      db.runTransaction(async (transaction) => {
+        await transaction.get(ref);
+        transaction.update(ref, { name: 'Renamed', updatedAt: new Date() });
+      })
+    );
+  });
+
+  it('a viewer cannot update an item in a transaction', async () => {
+    const db = testEnv.authenticatedContext('viewer-uid').firestore();
+    const ref = db.collection('items').doc('item1');
+    await assertFails(
+      db.runTransaction(async (transaction) => {
+        await transaction.get(ref);
+        transaction.update(ref, { status: 'iso', updatedAt: new Date() });
+      })
+    );
+  });
+});
+
 // Helper to register a beforeEach that (re-)seeds fixtures for a describe block,
 // since afterEach clears Firestore between every test.
 function beforeEach_seed() {

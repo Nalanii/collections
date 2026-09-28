@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { subscribeToCollection, subscribeToMembers } from '../services/collections'
+import { isConflictError } from '../services/conflicts'
 import { addItem, deleteItem, subscribeToItems, updateItem } from '../services/items'
+import { describeItemPath, itemContentChanged } from '../utils/editConflicts'
 import { searchItems } from '../utils/itemSearch'
 import { isMainField, summarizeItemFields } from '../utils/itemFieldSummary'
 import { buildSelectOptions } from '../utils/fieldOptions'
@@ -123,7 +125,37 @@ function CollectionName({ name }) {
 }
 
 function emptyFormState() {
-  return { fields: {}, originalFields: {}, status: 'have', notes: '' }
+  return { fields: {}, original: null, status: 'have', notes: '' }
+}
+
+// Edit-form state for `item`. `original` is the item as the form was opened with it;
+// updateItem diffs against it and uses it to detect concurrent edits.
+function editFormState(item, fieldDefs) {
+  return {
+    fields: Object.fromEntries(
+      fieldDefs.map((fieldDef) => [
+        fieldDef.name,
+        item.fields?.[fieldDef.name] != null ? String(item.fields[fieldDef.name]) : '',
+      ])
+    ),
+    original: {
+      status: item.status,
+      notes: item.notes ?? '',
+      fields: item.fields ?? {},
+      updatedAt: item.updatedAt ?? null,
+    },
+    status: item.status,
+    notes: item.notes ?? '',
+  }
+}
+
+function displayValue(value) {
+  const text = String(value ?? '').trim()
+  return text === '' ? '(empty)' : text
+}
+
+function statusLabel(status) {
+  return status === 'iso' ? 'ISO' : 'Have'
 }
 
 export function CollectionView({ collectionId, user, onBack, onManage = () => {} }) {
@@ -149,6 +181,9 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
   const [deletingId, setDeletingId] = useState(null)
   const [deleteError, setDeleteError] = useState(null)
   const [toast, setToast] = useState(null)
+  // A save refused because someone else changed or deleted the item being edited:
+  // `{ itemId, reason, conflictingKeys, latest }`. The form keeps the editor's input.
+  const [conflict, setConflict] = useState(null)
   const dismissToast = useCallback(() => setToast(null), [])
   const firstFieldRef = useRef(null)
   const savingRef = useRef(false)
@@ -233,6 +268,22 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
   const fieldDefs = collectionData?.fieldDefs ?? EMPTY_FIELD_DEFS
   const activeDuplicateWarning =
     mode === 'add' && duplicateWarning?.form === form ? duplicateWarning : null
+  // The live copy of the item being edited, from the items listener: `undefined`
+  // while not editing or not loaded, `null` once it has been deleted.
+  const liveEditingItem =
+    mode === 'add' && editingItemId && items !== null
+      ? items.find((item) => item.id === editingItemId) ?? null
+      : undefined
+  const activeConflict =
+    mode === 'add' && editingItemId && conflict?.itemId === editingItemId ? conflict : null
+  const editingItemDeleted = liveEditingItem === null || activeConflict?.reason === 'deleted'
+  // Someone else saved a change to the item since the form was opened.
+  const editingItemChanged =
+    liveEditingItem != null &&
+    form.original != null &&
+    !saving &&
+    itemContentChanged(form.original, liveEditingItem)
+  const latestEditingItem = liveEditingItem ?? activeConflict?.latest ?? null
   const rolesLoaded = members !== null
   const myRole = getMemberRole(members, user.uid)
   const isViewer = rolesLoaded && isViewerRole(myRole)
@@ -307,23 +358,29 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
   }
 
   function handleEditClick(item) {
-    const nextForm = {
-      fields: Object.fromEntries(
-        fieldDefs.map((fieldDef) => [
-          fieldDef.name,
-          item.fields?.[fieldDef.name] != null ? String(item.fields[fieldDef.name]) : '',
-        ])
-      ),
-      originalFields: item.fields ?? {},
-      status: item.status,
-      notes: item.notes ?? '',
-    }
+    const nextForm = editFormState(item, fieldDefs)
     setForm(nextForm)
     setInitialForm(nextForm)
     setEditingItemId(item.id)
     setFormError(null)
+    setConflict(null)
     setMode('add')
     setFocusToken((token) => token + 1)
+  }
+
+  // Discards the editor's input and reopens the form on the latest saved item.
+  function handleLoadLatest() {
+    if (liveEditingItem) {
+      handleEditClick(liveEditingItem)
+    }
+  }
+
+  function handleDiscardDeleted() {
+    setEditingItemId(null)
+    setForm(emptyFormState())
+    setFormError(null)
+    setConflict(null)
+    setMode('search')
   }
 
   function handleCancelEdit() {
@@ -354,7 +411,9 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
     setPendingDiscardAction(null)
   }
 
-  async function handleSaveItem({ skipDuplicateCheck = false } = {}) {
+  // `force` overwrites someone else's conflicting change; `asNew` re-adds an item that
+  // was deleted while it was being edited.
+  async function handleSaveItem({ skipDuplicateCheck = false, force = false, asNew = false } = {}) {
     if (savingRef.current) {
       return
     }
@@ -375,7 +434,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
       setFormError('Fill in at least one field.')
       return
     }
-    if (!skipDuplicateCheck) {
+    if (!skipDuplicateCheck && !force) {
       const duplicate = findDuplicateItem(items, fieldDefs, trimmedFields, editingItemId)
       if (duplicate) {
         setFormError(null)
@@ -388,27 +447,43 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
     }
     setFormError(null)
     setDuplicateWarning(null)
+    setConflict(null)
     savingRef.current = true
     setSaving(true)
     try {
-      if (editingItemId) {
+      if (editingItemId && !asNew) {
         await updateItem(editingItemId, {
           status: form.status,
           fields: trimmedFields,
-          originalFields: form.originalFields,
           notes: trimmedNotes,
+          original: form.original,
+          force,
         })
         setEditingItemId(null)
         setForm(emptyFormState())
         setMode('search')
       } else {
         await addItem(user, collectionId, { status: form.status, fields: trimmedFields, notes: trimmedNotes })
-        setForm(emptyFormState())
-        setFocusToken((token) => token + 1)
         const addedName = summarizeItemFields(fieldDefs, trimmedFields).main
         setToast({ id: Date.now(), message: addedName ? `Added: ${addedName}` : 'Item added' })
+        setForm(emptyFormState())
+        if (asNew) {
+          setEditingItemId(null)
+          setMode('search')
+        } else {
+          setFocusToken((token) => token + 1)
+        }
       }
     } catch (err) {
+      if (isConflictError(err)) {
+        setConflict({
+          itemId: editingItemId,
+          reason: err.reason,
+          conflictingKeys: err.conflictingKeys,
+          latest: err.latest,
+        })
+        return
+      }
       console.error(err)
       setFormError(
         editingItemId ? 'Could not save changes. Please try again.' : 'Could not add item. Please try again.'
@@ -680,6 +755,121 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
             </div>
           )}
 
+          {editingItemDeleted ? (
+            <div className="collection-view-conflict" role="alert">
+              <p>
+                Someone else deleted this item while you were editing. Your input is still here: add
+                it back as a new item, or discard it.
+              </p>
+              <div className="collection-view-conflict-actions">
+                <button
+                  type="button"
+                  className="collection-view-cancel-edit-button"
+                  onClick={handleDiscardDeleted}
+                  disabled={saving}
+                >
+                  Discard
+                </button>
+                <button
+                  type="button"
+                  className="collection-view-cancel-edit-button"
+                  onClick={() => handleSaveItem({ asNew: true, skipDuplicateCheck: true })}
+                  disabled={saving}
+                >
+                  Add as new item
+                </button>
+              </div>
+            </div>
+          ) : (
+            (activeConflict || editingItemChanged) &&
+            latestEditingItem && (
+              <div className="collection-view-conflict" role={activeConflict ? 'alert' : 'status'}>
+                {activeConflict ? (
+                  <p>
+                    Not saved: someone else changed{' '}
+                    {activeConflict.conflictingKeys.map(describeItemPath).join(', ')} while you were
+                    editing. Load the latest version (your input is discarded) or overwrite it with
+                    yours.
+                  </p>
+                ) : (
+                  <p>
+                    Someone else changed this item while you were editing. Saving keeps their changes
+                    to anything you didn&apos;t change.
+                  </p>
+                )}
+                <details className="collection-view-conflict-review" open={Boolean(activeConflict)}>
+                  <summary>Review latest version</summary>
+                  <dl className="collection-view-conflict-values">
+                    {[
+                      ...fieldDefs.map((fieldDef) => ({
+                        key: `field-${fieldDef.name}`,
+                        label: fieldDef.name,
+                        path: ['fields', fieldDef.name],
+                        latest: latestEditingItem.fields?.[fieldDef.name],
+                        mine: form.fields[fieldDef.name],
+                      })),
+                      {
+                        key: 'status',
+                        label: 'Status',
+                        path: ['status'],
+                        latest: statusLabel(latestEditingItem.status),
+                        mine: statusLabel(form.status),
+                      },
+                      {
+                        key: 'notes',
+                        label: 'Notes',
+                        path: ['notes'],
+                        latest: latestEditingItem.notes,
+                        mine: form.notes,
+                      },
+                    ].map((row) => {
+                      const isConflicting = activeConflict?.conflictingKeys.some(
+                        (path) => path.join('\u0000') === row.path.join('\u0000')
+                      )
+                      return (
+                        <div
+                          key={row.key}
+                          className={`collection-view-conflict-row${isConflicting ? ' collection-view-conflict-row--conflicting' : ''}`}
+                        >
+                          <dt>{row.label}</dt>
+                          <dd>
+                            {displayValue(row.latest)}
+                            {isConflicting && (
+                              <span className="collection-view-conflict-mine">
+                                {' '}
+                                (yours: {displayValue(row.mine)})
+                              </span>
+                            )}
+                          </dd>
+                        </div>
+                      )
+                    })}
+                  </dl>
+                </details>
+                <div className="collection-view-conflict-actions">
+                  <button
+                    type="button"
+                    className="collection-view-cancel-edit-button"
+                    onClick={handleLoadLatest}
+                    disabled={saving || !liveEditingItem}
+                  >
+                    {isAddFormDirty() ? 'Discard mine and load latest' : 'Load latest'}
+                  </button>
+                  {activeConflict && (
+                    <button
+                      type="button"
+                      className="collection-view-cancel-edit-button"
+                      onClick={() => handleSaveItem({ force: true })}
+                      disabled={saving}
+                    >
+                      Overwrite with mine
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          )}
+
           <div className="collection-view-add-actions">
             {activeDuplicateWarning ? (
               <>
@@ -713,7 +903,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
             <button
               type="submit"
               className="collection-view-save-button"
-              disabled={saving || Boolean(activeDuplicateWarning)}
+              disabled={saving || Boolean(activeDuplicateWarning) || Boolean(editingItemId && editingItemDeleted)}
             >
               {saving ? 'Saving…' : editingItemId ? 'Update item' : 'Save item'}
             </button>

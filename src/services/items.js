@@ -5,6 +5,7 @@ import {
   FieldPath,
   onSnapshot,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -12,9 +13,14 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { db } from './firebase'
-import { changedFields } from '../utils/changedFields'
+import { ConflictError } from './conflicts'
+import { findItemConflicts, itemChanges, sameTimestamp } from '../utils/editConflicts'
 import { trimFieldValues } from '../utils/trimFieldValues'
 import { clearListenerPending, reportRejectedWrite, setListenerPending } from './syncStatus'
+
+function isOffline() {
+  return typeof navigator !== 'undefined' && navigator.onLine === false
+}
 
 // Firestore write promises only resolve once the server acknowledges the write, so
 // offline they'd hang the UI even though the write is safely queued in the local
@@ -32,7 +38,7 @@ function settleWrite(writePromise, pendingDocIds = []) {
     const clear = () => clearListenerPending(pendingKey)
     writePromise.then(clear, clear)
   }
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+  if (isOffline()) {
     writePromise.catch((err) => {
       console.error(err)
       reportRejectedWrite()
@@ -105,28 +111,55 @@ export async function addItem(user, collectionId, { status, fields, notes }) {
 // `request.resource.data.collectionId == resource.data.collectionId`, so
 // changing an item's parent collection this way would be rejected anyway.
 //
-// Only fields that differ from `originalFields` are written, each via its own field
-// path, so an edit made elsewhere (or while this device was offline) to a different
-// field of the same item isn't overwritten. Same-field conflicts are last-write-wins.
-export function updateItem(itemId, { status, fields, originalFields, notes }) {
-  const changed = changedFields(originalFields, trimFieldValues(fields))
-  const fieldUpdates = Object.entries(changed).flatMap(([name, value]) => [
-    // FieldPath (not a "fields.<name>" string) so names containing dots still work.
-    new FieldPath('fields', name),
-    value,
-  ])
-  return settleWrite(
-    updateDoc(
-      doc(db, 'items', itemId),
-      'status',
-      status,
-      'notes',
-      trimNotes(notes),
-      ...fieldUpdates,
-      'updatedAt',
-      serverTimestamp()
-    )
-  )
+// `original` is the item as the edit form was opened with it (`{ status, notes,
+// fields, updatedAt }`). Only values that differ from it are written, each via its
+// own field path, so an edit someone else made to a different value of the same item
+// is kept (and nothing is written when nothing changed).
+//
+// Online, the write runs in a transaction that re-reads the item. If it was deleted,
+// or its `updatedAt` moved on and someone else changed one of the same values to
+// something different, a ConflictError is thrown and nothing is written. `force`
+// skips the "changed" check (the editor chose to overwrite); only the editor's own
+// changes are still written.
+//
+// Offline, transactions can't run, so the dot-path write is queued as before and
+// same-value conflicts are last-write-wins when it syncs.
+export async function updateItem(itemId, { status, fields, notes, original, force = false }) {
+  const edited = { status, fields: trimFieldValues(fields), notes: trimNotes(notes) }
+  const changes = itemChanges(original, edited)
+  if (changes.length === 0) {
+    return
+  }
+  const itemRef = doc(db, 'items', itemId)
+  const updateArgs = [
+    // FieldPath (not a "fields.<name>" string) so field names containing dots still work.
+    ...changes.flatMap(({ path, value }) => [new FieldPath(...path), value]),
+    'updatedAt',
+    serverTimestamp(),
+  ]
+
+  if (isOffline()) {
+    return settleWrite(updateDoc(itemRef, ...updateArgs))
+  }
+
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(itemRef)
+    if (!snap.exists()) {
+      throw new ConflictError({ reason: 'deleted' })
+    }
+    const current = snap.data()
+    if (!force && !sameTimestamp(current.updatedAt, original?.updatedAt)) {
+      const conflictingKeys = findItemConflicts(changes, original, current)
+      if (conflictingKeys.length > 0) {
+        throw new ConflictError({
+          reason: 'changed',
+          latest: { id: snap.id, ...current },
+          conflictingKeys,
+        })
+      }
+    }
+    transaction.update(itemRef, ...updateArgs)
+  })
 }
 
 const MAX_BATCH_WRITES = 500

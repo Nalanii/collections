@@ -9,13 +9,16 @@ import {
   getDocs,
   onSnapshot,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   updateDoc,
   where,
   writeBatch,
 } from 'firebase/firestore'
+import { changedCollectionParts, findCollectionConflicts, sameTimestamp } from '../utils/editConflicts'
 import { applyOptionRenames } from '../utils/fieldOptions'
+import { ConflictError } from './conflicts'
 import { db } from './firebase'
 
 export async function createCollection(user, { name, emoji, fieldDefs }) {
@@ -38,6 +41,8 @@ export async function createCollection(user, { name, emoji, fieldDefs }) {
     ownerId: user.uid,
     fieldDefs,
     createdAt: serverTimestamp(),
+    // Compared by updateCollection to detect concurrent edits.
+    updatedAt: serverTimestamp(),
   })
 
   // The collections doc write above is committed, but the members doc write
@@ -92,58 +97,116 @@ export async function createCollection(user, { name, emoji, fieldDefs }) {
   )
 }
 
-// Firestore caps a batch at 500 writes; in the atomic path one is the
-// collection doc itself.
+// Firestore caps a batch/transaction at 500 writes; in the atomic path one is
+// the collection doc itself.
 const MAX_BATCH_WRITES = 500
 const MAX_RENAMED_ITEMS = MAX_BATCH_WRITES - 1
 
-// `optionRenames` is a list of `{ fieldName, from, to }` dropdown option
-// renames. Every item in the collection holding `from` for that field is
-// rewritten to `to`. Up to 499 items are written in the same atomic batch as
-// the field-definition update, so a failure leaves both unchanged; larger
-// renames fall back to staged, retry-safe writes (see below).
-export async function updateCollection(
-  collectionId,
-  { name, emoji, fieldDefs, optionRenames = [] }
-) {
-  const collectionRef = doc(db, 'collections', collectionId)
-  if (optionRenames.length === 0) {
-    return updateDoc(collectionRef, { name, emoji, fieldDefs })
-  }
-
-  const itemsSnap = await getDocs(
-    query(collection(db, 'items'), where('collectionId', '==', collectionId))
-  )
-  const rewrites = []
-  itemsSnap.forEach((itemSnap) => {
-    const itemFields = itemSnap.data().fields ?? {}
-    const changes = []
-    // Group by field so a swap (A->B, B->A) is resolved against the old value once.
-    const fieldNames = new Set(optionRenames.map((rename) => rename.fieldName))
-    fieldNames.forEach((fieldName) => {
-      const renames = optionRenames.filter((rename) => rename.fieldName === fieldName)
-      const current = itemFields[fieldName]
-      const next = applyOptionRenames(current, renames)
-      if (next !== current) {
-        changes.push([new FieldPath('fields', fieldName), next])
-      }
-    })
-    if (changes.length > 0) {
-      rewrites.push({ ref: itemSnap.ref, changes })
+// The `[FieldPath, newValue]` writes that replay `optionRenames` on one item's
+// `fields` (empty when none of its values are renamed).
+function optionRenameChanges(itemFields, optionRenames) {
+  const fields = itemFields ?? {}
+  const changes = []
+  // Group by field so a swap (A->B, B->A) is resolved against the old value once.
+  const fieldNames = new Set(optionRenames.map((rename) => rename.fieldName))
+  fieldNames.forEach((fieldName) => {
+    const renames = optionRenames.filter((rename) => rename.fieldName === fieldName)
+    const current = fields[fieldName]
+    const next = applyOptionRenames(current, renames)
+    if (next !== current) {
+      changes.push([new FieldPath('fields', fieldName), next])
     }
   })
+  return changes
+}
 
-  if (rewrites.length <= MAX_RENAMED_ITEMS) {
-    const batch = writeBatch(db)
-    batch.update(collectionRef, { name, emoji, fieldDefs })
-    rewrites.forEach(({ ref, changes }) => {
-      batch.update(ref, ...changes.flat())
+// Rewrites one item read inside `transaction`. The rename is recomputed from the
+// transaction's fresh read (not the earlier query), and the transaction fails and
+// retries if the item changes before commit, so an item edited after the rename
+// began is never overwritten with a stale value. `updatedAt` is bumped so an editor
+// with the item open sees the change and gets a conflict if they changed the same field.
+function renameItemInTransaction(transaction, itemSnap, optionRenames) {
+  if (!itemSnap.exists()) {
+    return
+  }
+  const changes = optionRenameChanges(itemSnap.data().fields, optionRenames)
+  if (changes.length > 0) {
+    transaction.update(itemSnap.ref, ...changes.flat(), 'updatedAt', serverTimestamp())
+  }
+}
+
+// `original` is the collection as the edit form was opened with it (`{ name,
+// emoji, fieldDefs, updatedAt }`). Only the parts (name / emoji / fieldDefs) that
+// differ from it are written, together with a new `updatedAt`. Each write re-reads
+// the collection doc in a transaction: if its `updatedAt` moved on and someone else
+// also changed one of the same parts to something different, a ConflictError is
+// thrown and nothing is written. `force` skips that check (the editor chose to
+// overwrite). Needs a connection; transactions can't run offline.
+//
+// `optionRenames` is a list of `{ fieldName, from, to }` dropdown option
+// renames. Every item in the collection holding `from` for that field is
+// rewritten to `to`. Up to 499 items are written in the same transaction as the
+// field-definition update, so a conflict or failure leaves both unchanged;
+// larger renames fall back to staged, retry-safe transactions (see below).
+export async function updateCollection(
+  collectionId,
+  { name, emoji, fieldDefs, optionRenames = [], original, force = false }
+) {
+  const collectionRef = doc(db, 'collections', collectionId)
+  const edited = { name, emoji, fieldDefs }
+  const changedParts = changedCollectionParts(original, edited)
+  if (changedParts.length === 0 && optionRenames.length === 0) {
+    return
+  }
+  const collectionUpdate = {
+    ...Object.fromEntries(changedParts.map((part) => [part, edited[part]])),
+    updatedAt: serverTimestamp(),
+  }
+
+  async function checkForConflict(transaction) {
+    const snap = await transaction.get(collectionRef)
+    if (!snap.exists()) {
+      throw new ConflictError({ reason: 'deleted' })
+    }
+    const current = snap.data()
+    if (force || sameTimestamp(current.updatedAt, original?.updatedAt)) {
+      return
+    }
+    const conflictingKeys = findCollectionConflicts(changedParts, original, edited, current)
+    if (conflictingKeys.length > 0) {
+      throw new ConflictError({ reason: 'changed', latest: { id: snap.id, ...current }, conflictingKeys })
+    }
+  }
+
+  if (optionRenames.length === 0) {
+    await runTransaction(db, async (transaction) => {
+      await checkForConflict(transaction)
+      transaction.update(collectionRef, collectionUpdate)
     })
-    await batch.commit()
     return
   }
 
-  // Too many items for one atomic batch, so write them in stages. Items go
+  // Client transactions can't run queries, so find the affected items first and
+  // re-read each one inside the transaction that rewrites it.
+  const itemsSnap = await getDocs(
+    query(collection(db, 'items'), where('collectionId', '==', collectionId))
+  )
+  const renamedItemRefs = itemsSnap.docs
+    .filter((itemSnap) => optionRenameChanges(itemSnap.data().fields, optionRenames).length > 0)
+    .map((itemSnap) => itemSnap.ref)
+
+  if (renamedItemRefs.length <= MAX_RENAMED_ITEMS) {
+    await runTransaction(db, async (transaction) => {
+      await checkForConflict(transaction)
+      // All reads must happen before any write in a transaction.
+      const itemSnaps = await Promise.all(renamedItemRefs.map((ref) => transaction.get(ref)))
+      transaction.update(collectionRef, collectionUpdate)
+      itemSnaps.forEach((itemSnap) => renameItemInTransaction(transaction, itemSnap, optionRenames))
+    })
+    return
+  }
+
+  // Too many items for one transaction, so write them in stages. Items go
   // first and the field definition last: if any stage fails the definition is
   // unchanged, the form still holds the old option text, and retrying the save
   // re-detects the rename (items already rewritten no longer match `from`, so
@@ -160,14 +223,20 @@ export async function updateCollection(
       'Swapping or chaining option renames on a collection this large is not supported; rename one option at a time.'
     )
   }
-  for (let start = 0; start < rewrites.length; start += MAX_BATCH_WRITES) {
-    const batch = writeBatch(db)
-    rewrites.slice(start, start + MAX_BATCH_WRITES).forEach(({ ref, changes }) => {
-      batch.update(ref, ...changes.flat())
+  // Refuse up front if the definition already conflicts, before touching any item;
+  // the final write checks again in case it changes while the items are written.
+  await runTransaction(db, checkForConflict)
+  for (let start = 0; start < renamedItemRefs.length; start += MAX_BATCH_WRITES) {
+    const chunk = renamedItemRefs.slice(start, start + MAX_BATCH_WRITES)
+    await runTransaction(db, async (transaction) => {
+      const itemSnaps = await Promise.all(chunk.map((ref) => transaction.get(ref)))
+      itemSnaps.forEach((itemSnap) => renameItemInTransaction(transaction, itemSnap, optionRenames))
     })
-    await batch.commit()
   }
-  await updateDoc(collectionRef, { name, emoji, fieldDefs })
+  await runTransaction(db, async (transaction) => {
+    await checkForConflict(transaction)
+    transaction.update(collectionRef, collectionUpdate)
+  })
 }
 
 // Firestore does not cascade deletes to subcollections, so this removes the
