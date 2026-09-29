@@ -5,6 +5,7 @@ import { addItem, deleteItem, subscribeToItems, updateItem } from '../services/i
 import { describeItemPath, itemContentChanged } from '../utils/editConflicts'
 import { searchItems } from '../utils/itemSearch'
 import { isMainField, summarizeItemFields } from '../utils/itemFieldSummary'
+import { mainFieldNames, sortItems } from '../utils/sortItems'
 import { buildSelectOptions } from '../utils/fieldOptions'
 import { trimFieldValues } from '../utils/trimFieldValues'
 import { findDuplicateItem } from '../utils/duplicateItem'
@@ -124,6 +125,61 @@ function CollectionName({ name }) {
   )
 }
 
+function SortIcon({ direction }) {
+  return (
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+      <path
+        d={direction === 'asc' ? 'M8 13.5v-11M3.5 7L8 2.5 12.5 7' : 'M8 2.5v11M3.5 9L8 13.5 12.5 9'}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function sortStorageKey(collectionId) {
+  return `collection-sort:${collectionId}`
+}
+
+function loadSortDirection(collectionId) {
+  try {
+    return localStorage.getItem(sortStorageKey(collectionId)) === 'desc' ? 'desc' : 'asc'
+  } catch {
+    return 'asc'
+  }
+}
+
+function saveSortDirection(collectionId, direction) {
+  try {
+    localStorage.setItem(sortStorageKey(collectionId), direction)
+  } catch {
+    // Storage unavailable (private mode, blocked); the choice just won't persist.
+  }
+}
+
+function sortFieldStorageKey(collectionId) {
+  return `collection-sort-field:${collectionId}`
+}
+
+function loadSortField(collectionId) {
+  try {
+    return localStorage.getItem(sortFieldStorageKey(collectionId)) ?? ''
+  } catch {
+    return ''
+  }
+}
+
+function saveSortField(collectionId, fieldName) {
+  try {
+    localStorage.setItem(sortFieldStorageKey(collectionId), fieldName)
+  } catch {
+    // Storage unavailable (private mode, blocked); the choice just won't persist.
+  }
+}
+
 function emptyFormState() {
   return { fields: {}, original: null, status: 'have', notes: '' }
 }
@@ -166,6 +222,11 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
   const [membersState, setMembersState] = useState(EMPTY_MEMBERS_STATE)
   const [query, setQuery] = useState('')
   const [activeTab, setActiveTab] = useState('all')
+  const [sortState, setSortState] = useState(() => ({
+    id: collectionId,
+    direction: loadSortDirection(collectionId),
+    field: loadSortField(collectionId),
+  }))
 
   const [mode, setMode] = useState('search')
   const [form, setForm] = useState(emptyFormState)
@@ -289,6 +350,20 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
   const isViewer = rolesLoaded && isViewerRole(myRole)
   const showWriteControls = rolesLoaded && canWrite(myRole)
 
+  // The remembered sort direction belongs to a collection; reload it when the collection changes
+  // (adjusted during render, not in an effect).
+  if (sortState.id !== collectionId) {
+    setSortState({
+      id: collectionId,
+      direction: loadSortDirection(collectionId),
+      field: loadSortField(collectionId),
+    })
+  }
+  const sortDirection = sortState.id === collectionId ? sortState.direction : 'asc'
+  const mainFieldOptions = mainFieldNames(fieldDefs)
+  // A remembered field that is no longer a main field is ignored (default order applies).
+  const sortField = mainFieldOptions.includes(sortState.field) ? sortState.field : null
+
   // Viewers can't write: drop back to search mode (adjusted during render, not in an effect).
   if (isViewer && mode !== 'search') {
     setMode('search')
@@ -306,10 +381,34 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
     return items.filter((item) => item.status === activeTab)
   }, [items, activeTab])
 
+  // Sorted after the search so results stay in the chosen order rather than by match relevance.
   const displayedItems = useMemo(
-    () => searchItems(tabItems, fieldDefs, query),
-    [tabItems, fieldDefs, query]
+    () => sortItems(searchItems(tabItems, fieldDefs, query), fieldDefs, sortDirection, sortField),
+    [tabItems, fieldDefs, query, sortDirection, sortField]
   )
+
+  function handleToggleSort() {
+    const nextDirection = sortDirection === 'asc' ? 'desc' : 'asc'
+    setSortState({ ...sortState, id: collectionId, direction: nextDirection })
+    saveSortDirection(collectionId, nextDirection)
+  }
+
+  const sortDirectionButton = (
+    <button
+      type="button"
+      className="collection-view-sort-button"
+      onClick={handleToggleSort}
+      aria-label={`Sorted ${sortDirection === 'asc' ? 'ascending' : 'descending'}, switch to ${sortDirection === 'asc' ? 'descending' : 'ascending'}`}
+      title={sortDirection === 'asc' ? 'Sorted A to Z' : 'Sorted Z to A'}
+    >
+      <SortIcon direction={sortDirection} />
+    </button>
+  )
+
+  function handleSortFieldChange(fieldName) {
+    setSortState({ ...sortState, id: collectionId, field: fieldName })
+    saveSortField(collectionId, fieldName)
+  }
 
   function isAddFormDirty() {
     if (mode !== 'add') {
@@ -597,6 +696,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
       {isViewer && <ReadOnlyBanner />}
 
       {mode === 'search' && (
+        <>
         <div className="collection-view-filter-row">
           <div className="collection-view-search">
             <input
@@ -618,6 +718,8 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
               </button>
             )}
           </div>
+
+          {mainFieldOptions.length < 2 && sortDirectionButton}
 
           <div className="collection-view-tabs" role="tablist">
             <button
@@ -649,6 +751,23 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
             </button>
           </div>
         </div>
+        {mainFieldOptions.length >= 2 && (
+          <div className="collection-view-sort-field-row">
+            <label className="collection-view-sort-field-label" htmlFor="collection-sort-field">
+              Sort by
+            </label>
+            <Select
+              id="collection-sort-field"
+              className="collection-view-sort-field-select"
+              options={mainFieldOptions.map((name) => ({ value: name, label: name }))}
+              value={sortField ?? mainFieldOptions[0]}
+              onChange={handleSortFieldChange}
+              ariaLabel="Sort by field"
+            />
+            {sortDirectionButton}
+          </div>
+        )}
+        </>
       )}
       </div>
 
