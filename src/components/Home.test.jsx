@@ -22,8 +22,13 @@ function renderHome(collections) {
 describe('Home sharing badges', () => {
   afterEach(cleanup)
 
-  it('shows Shared with the member count on an owned collection with other members', () => {
-    renderHome([{ id: 'a', name: 'Books', ownerId: 'me', role: 'owner', memberCount: 3 }])
+  // memberCount includes the owner; the badge counts only the other members.
+  it('shows Shared with the number of other members, not counting the owner', () => {
+    renderHome([
+      { id: 'a', name: 'Books', ownerId: 'me', role: 'owner', memberCount: 2 },
+      { id: 'b', name: 'Games', ownerId: 'me', role: 'owner', memberCount: 4 },
+    ])
+    expect(screen.getByText('Shared · 1')).toBeTruthy()
     expect(screen.getByText('Shared · 3')).toBeTruthy()
   })
 

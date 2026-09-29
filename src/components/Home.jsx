@@ -69,7 +69,7 @@ export function Home({ user, onCreateCollection, onOpenCollection = () => {} }) 
               )}
               {c.ownerId === user.uid && c.memberCount > 1 && (
                 <span className="collection-card-badge collection-card-badge--shared">
-                  Shared · {c.memberCount}
+                  Shared · {c.memberCount - 1}
                 </span>
               )}
               {c.role === 'viewer' && (
