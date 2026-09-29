@@ -441,6 +441,51 @@ describe('ownership transfer', () => {
   });
 });
 
+describe('owner role changes on member docs outside a transfer', () => {
+  beforeEach_seed();
+
+  const member = (db, uid) =>
+    db.collection('collections').doc('col1').collection('members').doc(uid);
+
+  it('owner cannot set another member to owner', async () => {
+    const db = testEnv.authenticatedContext('owner-uid').firestore();
+    await assertFails(member(db, 'editor-uid').update({ role: 'owner' }));
+  });
+
+  it('owner cannot demote themselves', async () => {
+    const db = testEnv.authenticatedContext('owner-uid').firestore();
+    await assertFails(member(db, 'owner-uid').update({ role: 'editor' }));
+  });
+
+  it('owner cannot create a member doc with role owner', async () => {
+    const db = testEnv.authenticatedContext('owner-uid').firestore();
+    await assertFails(member(db, 'new-uid').set({ role: 'owner', uid: 'new-uid' }));
+  });
+
+  it('owner can still create editor and viewer member docs', async () => {
+    const db = testEnv.authenticatedContext('owner-uid').firestore();
+    await assertSucceeds(member(db, 'new-uid').set({ role: 'viewer', uid: 'new-uid' }));
+  });
+
+  it('owner can switch others between editor and viewer', async () => {
+    const db = testEnv.authenticatedContext('owner-uid').firestore();
+    await assertSucceeds(member(db, 'editor-uid').update({ role: 'viewer' }));
+    await assertSucceeds(member(db, 'viewer-uid').update({ role: 'editor' }));
+  });
+
+  it('owner can backfill their own email and displayName', async () => {
+    const db = testEnv.authenticatedContext('owner-uid').firestore();
+    await assertSucceeds(
+      member(db, 'owner-uid').update({ email: 'owner@example.com', displayName: 'Owner' })
+    );
+  });
+
+  it('non-owner cannot change roles', async () => {
+    const db = testEnv.authenticatedContext('editor-uid').firestore();
+    await assertFails(member(db, 'viewer-uid').update({ role: 'editor' }));
+  });
+});
+
 describe('archiving a collection (archivedAt is owner-only)', () => {
   beforeEach_seed();
 

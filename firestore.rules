@@ -30,6 +30,16 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/collections/$(collectionId)).data.get('archivedAt', null) != null;
     }
 
+    // True when the same batch moves collections/{id}.ownerId away from the
+    // requester and the member doc's new role matches the new ownerId.
+    function isTransferRoleChange(collectionId, uid) {
+      let colPath = /databases/$(database)/documents/collections/$(collectionId);
+      return get(colPath).data.ownerId == request.auth.uid
+        && getAfter(colPath).data.ownerId != request.auth.uid
+        && ((uid == getAfter(colPath).data.ownerId && request.resource.data.role == 'owner')
+          || (uid == request.auth.uid && request.resource.data.role in ['editor', 'viewer']));
+    }
+
     match /users/{uid} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
@@ -70,7 +80,7 @@ service cloud.firestore {
     match /collections/{collectionId}/members/{uid} {
       allow read: if isMember(collectionId);
       allow create: if (isOwner(collectionId)
-          && request.resource.data.role in ['owner', 'editor', 'viewer']) ||
+          && request.resource.data.role in ['editor', 'viewer']) ||
         (isSignedIn()
          && !isMember(collectionId)
          && request.auth.uid == uid
@@ -83,7 +93,16 @@ service cloud.firestore {
          && request.resource.data.role == get(/databases/$(database)/documents/collections/$(collectionId)/invites/$(request.auth.token.email)).data.role
          && request.resource.data.role in ['editor', 'viewer']
          && request.resource.data.email == request.auth.token.email);
-      allow update: if isOwner(collectionId) && request.resource.data.role in ['owner', 'editor', 'viewer'];
+      // Ownership only changes via the transfer batch (see the collections
+      // update rule), so an owner may: leave a doc's role unchanged (profile
+      // backfill), switch another non-owner member between editor/viewer, or
+      // change roles as part of a transfer that moves ownerId away from them.
+      allow update: if isOwner(collectionId)
+        && (request.resource.data.role == resource.data.role
+          || (uid != request.auth.uid
+              && resource.data.role != 'owner'
+              && request.resource.data.role in ['editor', 'viewer'])
+          || isTransferRoleChange(collectionId, uid));
       // An owner may delete their own member doc only as part of deleting the
       // collection itself (same batch), so they still cannot leave it.
       allow delete: if (isOwner(collectionId) && request.auth.uid != uid) ||
