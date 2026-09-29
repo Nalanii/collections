@@ -16,6 +16,8 @@ import { canWrite, getMemberRole, isViewerRole } from '../utils/permissions'
 import { ReadOnlyBanner } from './ReadOnlyBanner'
 import { BackButton } from './BackButton'
 import { ConfirmDialog } from './ConfirmDialog'
+import { memberDisplayName } from '../utils/memberDisplayName'
+import { RemoveMemberDialog } from './RemoveMemberDialog'
 import { Select } from './Select'
 import { Spinner } from './Spinner'
 import { StandardizeValues } from './StandardizeValues'
@@ -65,6 +67,7 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
   const backfilledOwnProfileRef = useRef(false)
   const [formDirty, setFormDirty] = useState(false)
   const [pendingDiscard, setPendingDiscard] = useState(false)
+  const [pendingRemoval, setPendingRemoval] = useState(null)
   // The collection as the edit form was opened with it. The form keeps editing this
   // snapshot while live updates arrive, and saves compare against it to detect
   // concurrent edits. `version` remounts the form when the editor loads the latest.
@@ -224,6 +227,12 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
     } finally {
       setMemberBusyKey(null)
     }
+  }
+
+  function handleConfirmRemoval() {
+    const member = pendingRemoval
+    setPendingRemoval(null)
+    handleRemoveMember(member.uid)
   }
 
   async function handleConfirmDelete() {
@@ -389,6 +398,15 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
         />
       )}
 
+      {pendingRemoval && (
+        <RemoveMemberDialog
+          member={pendingRemoval}
+          isSelf={pendingRemoval.uid === user.uid}
+          onConfirm={handleConfirmRemoval}
+          onCancel={() => setPendingRemoval(null)}
+        />
+      )}
+
       {error && <p className="admin-error">{error}</p>}
 
       {isEditMode && showWriteControls && (
@@ -438,7 +456,7 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
                   <li className="admin-member-card" key={member.uid}>
                     <div className="admin-member-details">
                       <span className="admin-member-email">
-                        {member.displayName ?? member.email ?? member.uid}
+                        {memberDisplayName(member)}
                       </span>
                       <span className="admin-member-role">{member.role}</span>
                     </div>
@@ -446,7 +464,7 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
                       <button
                         type="button"
                         className="admin-member-action-button"
-                        onClick={() => handleRemoveMember(member.uid)}
+                        onClick={() => setPendingRemoval(member)}
                         disabled={busy}
                       >
                         {busy ? 'Working…' : canLeave ? 'Leave' : 'Revoke'}
