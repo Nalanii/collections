@@ -271,8 +271,8 @@ export async function deleteCollection(collectionId) {
 // snapshot, `collections` is an array of `{ id, ...collectionDoc, role }` for
 // every collection the user is a member of, and `error` is undefined. Owned
 // collections also get `memberCount` (everyone with access, owner included)
-// once it has loaded, which updates the list again as members join or leave. Member
-// docs are matched on their own `uid` field (not the doc ID) because a
+// once it has loaded, which updates the list again as members join or leave.
+// Member docs are matched on their own `uid` field (not the doc ID) because a
 // collectionGroup query can only filter on document fields, not on the last
 // segment of each document's path. On a listener error (e.g.
 // `permission-denied`), `collections` is `[]` and `error` is the Firestore
@@ -336,8 +336,10 @@ export function subscribeToUserCollections(uid, callback) {
             emit()
           },
           () => {
-            // Leave this card without a count rather than failing the list.
+            // Drop this card's count (and the dead listener) rather than failing the list.
+            memberListeners.delete(id)
             memberCounts.delete(id)
+            emit()
           }
         )
       )
@@ -382,6 +384,8 @@ export function subscribeToUserCollections(uid, callback) {
         emit()
       } catch (err) {
         if (seq !== latestSeq) return
+        // Stop the count listeners so a late count can't replace the error state.
+        stopMemberListeners()
         callback([], err)
       }
     },

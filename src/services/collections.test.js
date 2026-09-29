@@ -294,15 +294,51 @@ describe('subscribeToUserCollections member counts', () => {
     expect(callback.mock.calls.at(-1)[0].find((c) => c.id === 'own').memberCount).toBe(1)
   })
 
-  it('keeps the list when one collection count listener fails', async () => {
+  it('keeps the list when one collection count listener fails before its first count', async () => {
     const callback = vi.fn()
     subscribeToUserCollections('me', callback)
     listeners.memberships.onNext({ docs: [membership('own', 'owner')], metadata: {} })
     await flush()
     listeners['collections/own/members'].onError(new Error('permission-denied'))
-    expect(callback).toHaveBeenCalledTimes(1)
-    expect(callback.mock.calls[0][0]).toHaveLength(1)
-    expect(callback.mock.calls[0][1]).toBeUndefined()
+    const latest = callback.mock.calls.at(-1)
+    expect(latest[0]).toHaveLength(1)
+    expect(latest[0][0]).not.toHaveProperty('memberCount')
+    expect(latest[1]).toBeUndefined()
+  })
+
+  it('clears a previously shown count when its listener later fails', async () => {
+    const callback = vi.fn()
+    subscribeToUserCollections('me', callback)
+    listeners.memberships.onNext({ docs: [membership('own', 'owner')], metadata: {} })
+    await flush()
+    const countListener = listeners['collections/own/members']
+    countListener.onNext(membersSnap(3))
+    expect(callback.mock.calls.at(-1)[0][0].memberCount).toBe(3)
+
+    countListener.onError(new Error('permission-denied'))
+    const latest = callback.mock.calls.at(-1)
+    expect(latest[0]).toHaveLength(1)
+    expect(latest[0][0]).not.toHaveProperty('memberCount')
+    expect(latest[1]).toBeUndefined()
+  })
+
+  it('does not let a count listener overwrite the error state after resolving fails', async () => {
+    const callback = vi.fn()
+    subscribeToUserCollections('me', callback)
+    listeners.memberships.onNext({ docs: [membership('own', 'owner')], metadata: {} })
+    await flush()
+    const countListener = listeners['collections/own/members']
+
+    getDoc.mockRejectedValueOnce(new Error('boom'))
+    listeners.memberships.onNext({ docs: [membership('own', 'owner')], metadata: {} })
+    await flush()
+    expect(callback.mock.calls.at(-1)).toEqual([[], expect.any(Error)])
+    expect(countListener.active).toBe(false)
+
+    // Even if a late count snapshot slipped through, it must not re-emit a populated list.
+    countListener.onNext(membersSnap(2))
+    expect(callback.mock.calls.every(([list]) => list.length === 0 || list[0].id === 'own')).toBe(true)
+    expect(callback.mock.calls.at(-1)[0]).toEqual([])
   })
 
   it('stops count listeners for dropped collections and on unsubscribe', async () => {
