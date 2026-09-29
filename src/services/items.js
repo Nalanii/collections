@@ -164,12 +164,54 @@ export async function updateItem(itemId, { status, fields, notes, original, forc
 
 const MAX_BATCH_WRITES = 500
 
-// Sets `fields.<fieldName>` to `newValue` on every item in `itemIds`, in batches of
-// at most 500 writes. Uses a dot-path update so other fields are untouched. Returns
-// the number of items updated.
-export async function applyFieldValueChange(itemIds, fieldName, newValue) {
+// Sets `fields.<fieldName>` to `newValue` on every item in `itemIds`. Uses a dot-path
+// update so other fields are untouched. Returns `{ changed, skipped }`.
+//
+// `variantValues` is the set of whitespace-collapsed values the caller saw on those
+// items when it picked them. Online, each item is updated in its own transaction that
+// re-reads it: if the item was deleted, or its current value no longer collapses to
+// one of `variantValues` (someone edited it since), it is left alone and counted in
+// `skipped`. An item that already holds `newValue` is left alone without being counted.
+//
+// Offline, transactions can't run, so the updates are queued in batches of at most 500
+// writes as before, with no re-check; every item counts as changed.
+export async function applyFieldValueChange(itemIds, fieldName, newValue, variantValues) {
   const value = typeof newValue === 'string' ? newValue.trim() : newValue
+  const variants = new Set(variantValues)
   let changed = 0
+  let skipped = 0
+
+  if (!isOffline()) {
+    for (let start = 0; start < itemIds.length; start += MAX_BATCH_WRITES) {
+      const chunk = itemIds.slice(start, start + MAX_BATCH_WRITES)
+      const outcomes = await Promise.all(
+        chunk.map((itemId) => {
+          const itemRef = doc(db, 'items', itemId)
+          return runTransaction(db, async (transaction) => {
+            const snap = await transaction.get(itemRef)
+            if (!snap.exists()) return 'skipped'
+            const raw = snap.data().fields?.[fieldName]
+            if (raw == null) return 'skipped'
+            if (!variants.has(String(raw).replace(/\s+/g, ' ').trim())) return 'skipped'
+            if (raw === value) return 'unchanged'
+            // FieldPath (not a "fields.<name>" string) so names containing dots still work.
+            transaction.update(
+              itemRef,
+              new FieldPath('fields', fieldName),
+              value,
+              'updatedAt',
+              serverTimestamp()
+            )
+            return 'changed'
+          })
+        })
+      )
+      changed += outcomes.filter((outcome) => outcome === 'changed').length
+      skipped += outcomes.filter((outcome) => outcome === 'skipped').length
+    }
+    return { changed, skipped }
+  }
+
   for (let start = 0; start < itemIds.length; start += MAX_BATCH_WRITES) {
     const batch = writeBatch(db)
     const chunk = itemIds.slice(start, start + MAX_BATCH_WRITES)
@@ -186,7 +228,7 @@ export async function applyFieldValueChange(itemIds, fieldName, newValue) {
     await settleWrite(batch.commit())
     changed += chunk.length
   }
-  return changed
+  return { changed, skipped }
 }
 
 export function deleteItem(itemId) {

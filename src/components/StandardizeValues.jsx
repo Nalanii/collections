@@ -129,8 +129,18 @@ export function StandardizeValues({ collectionId, fieldDefs }) {
         return variantValues.has(collapsed) && String(raw) !== newValue
       })
       .map((item) => item.id)
-    const changed = await applyFieldValueChange(itemIds, fieldName, newValue)
-    setResult(`Updated ${changed} ${changed === 1 ? 'item' : 'items'}`)
+    const { changed, skipped: skippedCount } = await applyFieldValueChange(
+      itemIds,
+      fieldName,
+      newValue,
+      variantValues
+    )
+    const plural = (n) => (n === 1 ? 'item' : 'items')
+    setResult(
+      skippedCount > 0
+        ? `Updated ${changed} ${plural(changed)}, skipped ${skippedCount} that changed since loading`
+        : `Updated ${changed} ${plural(changed)}`
+    )
   }
 
   function handleSkip(group) {

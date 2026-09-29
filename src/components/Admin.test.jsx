@@ -14,7 +14,7 @@ vi.mock('../services/collections', () => ({
 }))
 vi.mock('../services/invites', () => ({ createInvite: vi.fn() }))
 vi.mock('../services/items', () => ({
-  applyFieldValueChange: vi.fn(),
+  applyFieldValueChange: vi.fn(() => Promise.resolve({ changed: 0, skipped: 0 })),
   subscribeToItems: vi.fn(() => () => {}),
 }))
 

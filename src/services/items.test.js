@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { deleteDocMock, runTransactionMock, updateDocMock, setDocMock } = vi.hoisted(() => ({
+const { deleteDocMock, runTransactionMock, updateDocMock, setDocMock, writeBatchMock } = vi.hoisted(() => ({
+  writeBatchMock: vi.fn(),
   deleteDocMock: vi.fn(),
   runTransactionMock: vi.fn(),
   updateDocMock: vi.fn(),
@@ -23,11 +24,11 @@ vi.mock('firebase/firestore', () => ({
   setDoc: setDocMock,
   updateDoc: updateDocMock,
   where: vi.fn(),
-  writeBatch: vi.fn(),
+  writeBatch: writeBatchMock,
 }))
 vi.mock('./firebase', () => ({ db: {} }))
 
-import { addItem, deleteItem, updateItem } from './items'
+import { addItem, applyFieldValueChange, deleteItem, updateItem } from './items'
 import { ConflictError } from './conflicts'
 import { getSyncStatus, resetSyncStatus, setListenerPending } from './syncStatus'
 
@@ -178,6 +179,84 @@ describe('updateItem conflict handling', () => {
     expect(field.segments).toEqual(['notes'])
     expect(value).toBe('mint')
     expect(rest).toEqual(['updatedAt', 'SERVER_TIMESTAMP'])
+  })
+})
+
+// Runs each per-item transaction against `stored` (`{ [itemId]: item | null }`, null =
+// deleted) and records the updates as `{ id, update }`.
+function mockItemsTransaction(stored) {
+  const updates = []
+  runTransactionMock.mockImplementation(async (_db, callback) => {
+    const transaction = {
+      get: vi.fn(async (ref) => {
+        const item = stored[ref.path.split('/').pop()]
+        return { exists: () => item != null, data: () => item }
+      }),
+      update: vi.fn((ref, path, value, ...rest) => {
+        updates.push({ id: ref.path.split('/').pop(), path: path.segments, value, rest })
+      }),
+    }
+    return callback(transaction)
+  })
+  return updates
+}
+
+describe('applyFieldValueChange', () => {
+  beforeEach(() => {
+    runTransactionMock.mockReset()
+    writeBatchMock.mockReset()
+    vi.stubGlobal('navigator', { onLine: true })
+  })
+
+  const variants = new Set(['The Beatles', 'the beatles'])
+
+  it('updates items whose current value is still one of the variants', async () => {
+    const updates = mockItemsTransaction({
+      a: { fields: { Artist: 'the  beatles' } },
+      b: { fields: { Artist: 'the beatles' } },
+    })
+    const result = await applyFieldValueChange(['a', 'b'], 'Artist', ' The Beatles ', variants)
+    expect(result).toEqual({ changed: 2, skipped: 0 })
+    expect(updates).toEqual([
+      { id: 'a', path: ['fields', 'Artist'], value: 'The Beatles', rest: ['updatedAt', 'SERVER_TIMESTAMP'] },
+      { id: 'b', path: ['fields', 'Artist'], value: 'The Beatles', rest: ['updatedAt', 'SERVER_TIMESTAMP'] },
+    ])
+  })
+
+  it('skips an item edited to something else since the variants were loaded', async () => {
+    const updates = mockItemsTransaction({
+      a: { fields: { Artist: 'the beatles' } },
+      b: { fields: { Artist: 'Wings' } },
+      c: { fields: {} },
+    })
+    const result = await applyFieldValueChange(['a', 'b', 'c'], 'Artist', 'The Beatles', variants)
+    expect(result).toEqual({ changed: 1, skipped: 2 })
+    expect(updates.map((update) => update.id)).toEqual(['a'])
+  })
+
+  it('skips an item deleted since the variants were loaded', async () => {
+    const updates = mockItemsTransaction({ a: { fields: { Artist: 'the beatles' } }, b: null })
+    const result = await applyFieldValueChange(['a', 'b'], 'Artist', 'The Beatles', variants)
+    expect(result).toEqual({ changed: 1, skipped: 1 })
+    expect(updates.map((update) => update.id)).toEqual(['a'])
+  })
+
+  it('does not write or count an item that already holds the new value', async () => {
+    const updates = mockItemsTransaction({ a: { fields: { Artist: 'The Beatles' } } })
+    const result = await applyFieldValueChange(['a'], 'Artist', 'The Beatles', variants)
+    expect(result).toEqual({ changed: 0, skipped: 0 })
+    expect(updates).toEqual([])
+  })
+
+  it('queues a batched write offline instead of transactions', async () => {
+    vi.stubGlobal('navigator', { onLine: false })
+    const batch = { update: vi.fn(), commit: vi.fn(() => new Promise(() => {})) }
+    writeBatchMock.mockReturnValue(batch)
+    const result = await applyFieldValueChange(['a', 'b'], 'Artist', 'The Beatles', variants)
+    expect(result).toEqual({ changed: 2, skipped: 0 })
+    expect(runTransactionMock).not.toHaveBeenCalled()
+    expect(batch.update).toHaveBeenCalledTimes(2)
+    expect(batch.commit).toHaveBeenCalledTimes(1)
   })
 })
 
