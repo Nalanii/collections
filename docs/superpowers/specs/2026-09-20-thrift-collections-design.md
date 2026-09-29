@@ -149,8 +149,8 @@ shippable and buildable on the last:
     rules from ticket 3.
 11. **(Stub, future) Offline support** — Firestore offline persistence and
     sync so "do I have this" works with no signal.
-12. **(Stub, future) Ownership transfer** — let a collection owner hand off
-    ownership to another member.
+12. **Ownership transfer** — let a collection owner hand off ownership to
+    another member (implemented: the old owner becomes an editor).
 13. **(Stub, future) SimpleLogin auth** — add SimpleLogin as a second auth
     provider alongside Google.
 14. **(Stub, future) Archive collections** — archive instead of (or in

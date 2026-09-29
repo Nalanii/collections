@@ -10,6 +10,7 @@ vi.mock('../services/collections', () => ({
   removeMember: vi.fn(() => Promise.resolve()),
   subscribeToCollection: vi.fn(),
   subscribeToMembers: vi.fn(),
+  transferOwnership: vi.fn(() => Promise.resolve()),
   updateCollection: vi.fn(),
 }))
 vi.mock('../services/invites', () => ({ createInvite: vi.fn() }))
@@ -18,7 +19,7 @@ vi.mock('../services/items', () => ({
   subscribeToItems: vi.fn(() => () => {}),
 }))
 
-const { removeMember, subscribeToCollection, subscribeToMembers } = await import(
+const { removeMember, subscribeToCollection, subscribeToMembers, transferOwnership } = await import(
   '../services/collections'
 )
 const { Admin } = await import('./Admin')
@@ -123,5 +124,86 @@ describe('Admin member removal', () => {
     // Revoking someone else keeps the owner on the screen.
     expect(onDone).not.toHaveBeenCalled()
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+  })
+})
+
+describe('Admin ownership transfer', () => {
+  beforeEach(() => {
+    subscribeToCollection.mockImplementation((id, callback) => {
+      callback(collection)
+      return () => {}
+    })
+    subscribeToMembers.mockImplementation((id, callback) => {
+      callback(members)
+      return () => {}
+    })
+  })
+
+  afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+  })
+
+  it('offers the owner a transfer for each other member, not themselves', () => {
+    renderAdmin(ownerUser)
+
+    expect(screen.getAllByRole('button', { name: 'Transfer ownership' })).toHaveLength(2)
+  })
+
+  it('does not offer a transfer to non-owners', () => {
+    renderAdmin(editorUser)
+
+    expect(screen.queryByRole('button', { name: 'Transfer ownership' })).toBeNull()
+  })
+
+  it('asks before transferring and does not transfer when cancelled', async () => {
+    const user = userEvent.setup()
+    renderAdmin(ownerUser)
+
+    await user.click(screen.getAllByRole('button', { name: 'Transfer ownership' })[1])
+
+    const dialog = screen.getByRole('alertdialog')
+    expect(within(dialog).getByText('Transfer ownership?')).toBeTruthy()
+    expect(dialog.textContent).toContain('Sam Lee')
+    expect(transferOwnership).not.toHaveBeenCalled()
+
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(transferOwnership).not.toHaveBeenCalled()
+  })
+
+  it('transfers to the chosen member when confirmed', async () => {
+    const user = userEvent.setup()
+    renderAdmin(ownerUser)
+
+    await user.click(screen.getAllByRole('button', { name: 'Transfer ownership' })[1])
+    const dialog = screen.getByRole('alertdialog')
+    const transferButton = within(dialog).getByRole('button', { name: 'Transfer' })
+    expect(transferButton.disabled).toBe(true)
+
+    await user.click(transferButton)
+    expect(transferOwnership).not.toHaveBeenCalled()
+
+    await user.click(within(dialog).getByRole('checkbox', { name: 'I understand these consequences' }))
+    await user.click(transferButton)
+
+    expect(transferOwnership).toHaveBeenCalledTimes(1)
+    expect(transferOwnership).toHaveBeenCalledWith('c1', 'owner', 'viewer')
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+  })
+
+  it('shows an error when the transfer fails', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    transferOwnership.mockRejectedValueOnce(new Error('denied'))
+    const user = userEvent.setup()
+    renderAdmin(ownerUser)
+
+    await user.click(screen.getAllByRole('button', { name: 'Transfer ownership' })[0])
+    await user.click(screen.getByRole('checkbox', { name: 'I understand these consequences' }))
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Transfer' }))
+
+    expect(await screen.findByText('Could not transfer ownership. Please try again.')).toBeTruthy()
+    consoleError.mockRestore()
   })
 })

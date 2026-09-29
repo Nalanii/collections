@@ -29,8 +29,8 @@ vi.mock('firebase/firestore', () => ({
 }))
 vi.mock('./firebase', () => ({ db: {} }))
 
-import { collection, collectionGroup, getDoc, onSnapshot, query } from 'firebase/firestore'
-import { subscribeToUserCollections, updateCollection } from './collections'
+import { collection, collectionGroup, getDoc, onSnapshot, query, writeBatch } from 'firebase/firestore'
+import { subscribeToUserCollections, transferOwnership, updateCollection } from './collections'
 import { ConflictError } from './conflicts'
 
 function ts(millis) {
@@ -237,6 +237,31 @@ describe('updateCollection conflict handling', () => {
       expect(commits.map((writes) => writes.length)).toEqual([0, 500, 100, 1])
       expect(commits[3][0].path).toBe('collections/col1')
     })
+  })
+})
+
+describe('transferOwnership', () => {
+  function mockBatch() {
+    const batch = { update: vi.fn(), commit: vi.fn(() => Promise.resolve()) }
+    writeBatch.mockReturnValue(batch)
+    return batch
+  }
+
+  it('sets ownerId and swaps both member roles in one batch', async () => {
+    const batch = mockBatch()
+    await transferOwnership('col1', 'old', 'new')
+    expect(batch.update.mock.calls).toEqual([
+      [{ path: 'collections/col1' }, { ownerId: 'new', updatedAt: 'SERVER_TIMESTAMP' }],
+      [{ path: 'collections/col1/members/old' }, { role: 'editor' }],
+      [{ path: 'collections/col1/members/new' }, { role: 'owner' }],
+    ])
+    expect(batch.commit).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects when the batch fails to commit', async () => {
+    const batch = mockBatch()
+    batch.commit.mockRejectedValueOnce(new Error('permission-denied'))
+    await expect(transferOwnership('col1', 'old', 'new')).rejects.toThrow('permission-denied')
   })
 })
 

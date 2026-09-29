@@ -33,6 +33,27 @@
   line-height: 1.4;
 }
 
+.confirm-dialog-acknowledgement {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin: 0 0 1.25rem;
+  color: var(--color-text);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.confirm-dialog-acknowledgement input {
+  flex-shrink: 0;
+  margin-top: 0.2rem;
+}
+
+.confirm-dialog-confirm-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .confirm-dialog-actions {
   display: flex;
   justify-content: flex-end;

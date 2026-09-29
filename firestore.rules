@@ -39,8 +39,20 @@ service cloud.firestore {
       allow read: if isMember(collectionId) ||
         (isSignedIn() && exists(/databases/$(database)/documents/collections/$(collectionId)/invites/$(request.auth.token.email)));
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      // ownerId only changes in an ownership transfer: the current owner hands
+      // the collection to an existing member, in the same batch that makes that
+      // member's doc role 'owner' and demotes the owner's own doc (checked with
+      // getAfter/existsAfter, which see the batch's final state). That leaves
+      // exactly one owner doc, matching ownerId.
       allow update: if isOwnerOrEditor(collectionId)
-        && request.resource.data.ownerId == resource.data.ownerId;
+        && (request.resource.data.ownerId == resource.data.ownerId ||
+          (isOwner(collectionId)
+           && resource.data.ownerId == request.auth.uid
+           && exists(/databases/$(database)/documents/collections/$(collectionId)/members/$(request.resource.data.ownerId))
+           && existsAfter(/databases/$(database)/documents/collections/$(collectionId)/members/$(request.resource.data.ownerId))
+           && getAfter(/databases/$(database)/documents/collections/$(collectionId)/members/$(request.resource.data.ownerId)).data.role == 'owner'
+           && existsAfter(/databases/$(database)/documents/collections/$(collectionId)/members/$(request.auth.uid))
+           && getAfter(/databases/$(database)/documents/collections/$(collectionId)/members/$(request.auth.uid)).data.role != 'owner'));
       // The second branch lets the creator delete a just-created collection
       // whose owner members doc never got written (createCollection cleanup).
       allow delete: if isOwner(collectionId) ||

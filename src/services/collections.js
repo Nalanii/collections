@@ -450,6 +450,22 @@ export function backfillMemberProfile(collectionId, uid, { email, displayName })
   return updateDoc(doc(db, 'collections', collectionId, 'members', uid), { email, displayName })
 }
 
+// Hands ownership of a collection to an existing member. One atomic batch sets
+// `ownerId`, promotes the new owner's member doc and demotes the current owner
+// to editor (they keep access), so there is never zero or two owners.
+// firestore.rules only allows an `ownerId` change when the batch's member doc
+// writes match (see the collections update rule).
+export async function transferOwnership(collectionId, currentOwnerUid, newOwnerUid) {
+  const batch = writeBatch(db)
+  batch.update(doc(db, 'collections', collectionId), {
+    ownerId: newOwnerUid,
+    updatedAt: serverTimestamp(),
+  })
+  batch.update(doc(db, 'collections', collectionId, 'members', currentOwnerUid), { role: 'editor' })
+  batch.update(doc(db, 'collections', collectionId, 'members', newOwnerUid), { role: 'owner' })
+  await batch.commit()
+}
+
 // Deletes a `collections/{collectionId}/members/{uid}` doc. Used both for an
 // owner revoking another member's access and for a member leaving on their
 // own -- firestore.rules' delete rule for this path already distinguishes

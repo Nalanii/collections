@@ -382,6 +382,65 @@ describe('editor (read/write items, no collection delete)', () => {
   });
 });
 
+describe('ownership transfer', () => {
+  beforeEach_seed();
+
+  function transferBatch(db, { newOwner, demoteOwner = true, promoteNew = true }) {
+    const col = db.collection('collections').doc('col1');
+    const batch = db.batch();
+    batch.update(col, { ownerId: newOwner });
+    if (demoteOwner) batch.update(col.collection('members').doc('owner-uid'), { role: 'editor' });
+    if (promoteNew) batch.update(col.collection('members').doc(newOwner), { role: 'owner' });
+    return batch;
+  }
+
+  it('owner can transfer to an existing editor member', async () => {
+    const db = testEnv.authenticatedContext('owner-uid').firestore();
+    await assertSucceeds(transferBatch(db, { newOwner: 'editor-uid' }).commit());
+  });
+
+  it('owner can transfer to an existing viewer member', async () => {
+    const db = testEnv.authenticatedContext('owner-uid').firestore();
+    await assertSucceeds(transferBatch(db, { newOwner: 'viewer-uid' }).commit());
+  });
+
+  it('owner cannot transfer to a non-member', async () => {
+    const db = testEnv.authenticatedContext('owner-uid').firestore();
+    const col = db.collection('collections').doc('col1');
+    const batch = db.batch();
+    batch.update(col, { ownerId: 'stranger-uid' });
+    batch.update(col.collection('members').doc('owner-uid'), { role: 'editor' });
+    batch.set(col.collection('members').doc('stranger-uid'), { role: 'owner', uid: 'stranger-uid' });
+    await assertFails(batch.commit());
+  });
+
+  it('owner cannot change ownerId without promoting the new owner member doc', async () => {
+    const db = testEnv.authenticatedContext('owner-uid').firestore();
+    await assertFails(transferBatch(db, { newOwner: 'editor-uid', promoteNew: false }).commit());
+  });
+
+  it('owner cannot change ownerId without demoting their own member doc', async () => {
+    const db = testEnv.authenticatedContext('owner-uid').firestore();
+    await assertFails(transferBatch(db, { newOwner: 'editor-uid', demoteOwner: false }).commit());
+  });
+
+  it('owner cannot change ownerId with a bare update', async () => {
+    const db = testEnv.authenticatedContext('owner-uid').firestore();
+    await assertFails(
+      db.collection('collections').doc('col1').update({ ownerId: 'editor-uid' })
+    );
+  });
+
+  it('editor cannot transfer ownership to themselves', async () => {
+    const db = testEnv.authenticatedContext('editor-uid').firestore();
+    const col = db.collection('collections').doc('col1');
+    const batch = db.batch();
+    batch.update(col, { ownerId: 'editor-uid' });
+    batch.update(col.collection('members').doc('editor-uid'), { role: 'owner' });
+    await assertFails(batch.commit());
+  });
+});
+
 describe('viewer (read-only)', () => {
   beforeEach_seed();
 

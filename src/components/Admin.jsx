@@ -7,6 +7,7 @@ import {
   removeMember,
   subscribeToCollection,
   subscribeToMembers,
+  transferOwnership,
   updateCollection,
 } from '../services/collections'
 import { isConflictError } from '../services/conflicts'
@@ -21,6 +22,7 @@ import { RemoveMemberDialog } from './RemoveMemberDialog'
 import { Select } from './Select'
 import { Spinner } from './Spinner'
 import { StandardizeValues } from './StandardizeValues'
+import { TransferOwnershipDialog } from './TransferOwnershipDialog'
 import './Admin.css'
 
 const EMPTY_VALUES = { name: '', emoji: '', fieldDefs: [] }
@@ -68,6 +70,7 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
   const [formDirty, setFormDirty] = useState(false)
   const [pendingDiscard, setPendingDiscard] = useState(false)
   const [pendingRemoval, setPendingRemoval] = useState(null)
+  const [pendingTransfer, setPendingTransfer] = useState(null)
   // The collection as the edit form was opened with it. The form keeps editing this
   // snapshot while live updates arrive, and saves compare against it to detect
   // concurrent edits. `version` remounts the form when the editor loads the latest.
@@ -233,6 +236,21 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
     const member = pendingRemoval
     setPendingRemoval(null)
     handleRemoveMember(member.uid)
+  }
+
+  async function handleConfirmTransfer() {
+    const member = pendingTransfer
+    setPendingTransfer(null)
+    setMemberActionError(null)
+    setMemberBusyKey(member.uid)
+    try {
+      await transferOwnership(collectionId, user.uid, member.uid)
+    } catch (err) {
+      console.error(err)
+      setMemberActionError('Could not transfer ownership. Please try again.')
+    } finally {
+      setMemberBusyKey(null)
+    }
   }
 
   async function handleConfirmDelete() {
@@ -407,6 +425,14 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
         />
       )}
 
+      {pendingTransfer && (
+        <TransferOwnershipDialog
+          member={pendingTransfer}
+          onConfirm={handleConfirmTransfer}
+          onCancel={() => setPendingTransfer(null)}
+        />
+      )}
+
       {error && <p className="admin-error">{error}</p>}
 
       {isEditMode && showWriteControls && (
@@ -461,14 +487,26 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
                       <span className="admin-member-role">{member.role}</span>
                     </div>
                     {(canRevoke || canLeave) && (
-                      <button
-                        type="button"
-                        className="admin-member-action-button"
-                        onClick={() => setPendingRemoval(member)}
-                        disabled={busy}
-                      >
-                        {busy ? 'Working…' : canLeave ? 'Leave' : 'Revoke'}
-                      </button>
+                      <div className="admin-member-actions">
+                        {canRevoke && member.role !== 'owner' && (
+                          <button
+                            type="button"
+                            className="admin-member-transfer-button"
+                            onClick={() => setPendingTransfer(member)}
+                            disabled={busy}
+                          >
+                            Transfer ownership
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="admin-member-action-button"
+                          onClick={() => setPendingRemoval(member)}
+                          disabled={busy}
+                        >
+                          {busy ? 'Working…' : canLeave ? 'Leave' : 'Revoke'}
+                        </button>
+                      </div>
                     )}
                   </li>
                 )

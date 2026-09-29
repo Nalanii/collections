@@ -262,6 +262,30 @@
   text-transform: capitalize;
 }
 
+.admin-member-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.admin-member-transfer-button {
+  padding: 0.5rem 0.75rem;
+  min-height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: transparent;
+  color: var(--color-text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-member-transfer-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .admin-member-action-button {
   padding: 0.5rem 0.75rem;
   min-height: 44px;
