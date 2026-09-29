@@ -29,7 +29,8 @@ vi.mock('firebase/firestore', () => ({
 }))
 vi.mock('./firebase', () => ({ db: {} }))
 
-import { updateCollection } from './collections'
+import { collection, collectionGroup, getDoc, onSnapshot, query } from 'firebase/firestore'
+import { subscribeToUserCollections, updateCollection } from './collections'
 import { ConflictError } from './conflicts'
 
 function ts(millis) {
@@ -236,5 +237,91 @@ describe('updateCollection conflict handling', () => {
       expect(commits.map((writes) => writes.length)).toEqual([0, 500, 100, 1])
       expect(commits[3][0].path).toBe('collections/col1')
     })
+  })
+})
+
+describe('subscribeToUserCollections member counts', () => {
+  // Fake snapshot listeners keyed by what they listen to: 'memberships' for the
+  // collectionGroup query, or the members subcollection path.
+  let listeners
+  const flush = () => new Promise((resolve) => setTimeout(resolve, 0))
+
+  beforeEach(() => {
+    listeners = {}
+    collection.mockImplementation((_db, ...path) => ({ key: path.join('/') }))
+    collectionGroup.mockImplementation(() => ({ key: 'memberships' }))
+    query.mockImplementation((source) => source)
+    onSnapshot.mockImplementation((source, onNext, onError) => {
+      const listener = { onNext, onError, active: true }
+      listeners[source.key] = listener
+      return vi.fn(() => {
+        listener.active = false
+      })
+    })
+    const collections = {
+      own: { name: 'Mine', ownerId: 'me' },
+      other: { name: 'Theirs', ownerId: 'them' },
+    }
+    getDoc.mockImplementation(async (ref) => ({
+      id: ref.id,
+      exists: () => true,
+      data: () => collections[ref.id],
+    }))
+  })
+
+  const membership = (collectionId, role) => ({
+    ref: { parent: { parent: { id: collectionId } } },
+    data: () => ({ role }),
+  })
+  const membersSnap = (size) => ({ size })
+
+  it('adds memberCount to owned collections only, and updates it live', async () => {
+    const callback = vi.fn()
+    subscribeToUserCollections('me', callback)
+    listeners.memberships.onNext({
+      docs: [membership('own', 'owner'), membership('other', 'viewer')],
+      metadata: { fromCache: false },
+    })
+    await flush()
+    expect(Object.keys(listeners).sort()).toEqual(['collections/own/members', 'memberships'])
+
+    listeners['collections/own/members'].onNext(membersSnap(3))
+    const latest = callback.mock.calls.at(-1)[0]
+    expect(latest.find((c) => c.id === 'own').memberCount).toBe(3)
+    expect(latest.find((c) => c.id === 'other')).not.toHaveProperty('memberCount')
+
+    listeners['collections/own/members'].onNext(membersSnap(1))
+    expect(callback.mock.calls.at(-1)[0].find((c) => c.id === 'own').memberCount).toBe(1)
+  })
+
+  it('keeps the list when one collection count listener fails', async () => {
+    const callback = vi.fn()
+    subscribeToUserCollections('me', callback)
+    listeners.memberships.onNext({ docs: [membership('own', 'owner')], metadata: {} })
+    await flush()
+    listeners['collections/own/members'].onError(new Error('permission-denied'))
+    expect(callback).toHaveBeenCalledTimes(1)
+    expect(callback.mock.calls[0][0]).toHaveLength(1)
+    expect(callback.mock.calls[0][1]).toBeUndefined()
+  })
+
+  it('stops count listeners for dropped collections and on unsubscribe', async () => {
+    const callback = vi.fn()
+    const unsubscribe = subscribeToUserCollections('me', callback)
+    listeners.memberships.onNext({ docs: [membership('own', 'owner')], metadata: {} })
+    await flush()
+    const countListener = listeners['collections/own/members']
+
+    listeners.memberships.onNext({ docs: [], metadata: {} })
+    await flush()
+    expect(countListener.active).toBe(false)
+
+    listeners.memberships.onNext({ docs: [membership('own', 'owner')], metadata: {} })
+    await flush()
+    const relistened = listeners['collections/own/members']
+    expect(relistened.active).toBe(true)
+    unsubscribe()
+    expect(relistened.active).toBe(false)
+    expect(listeners.memberships.active).toBe(false)
   })
 })

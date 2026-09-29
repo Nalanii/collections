@@ -269,7 +269,9 @@ export async function deleteCollection(collectionId) {
 
 // `callback` is invoked as `callback(collections, error)`. On a successful
 // snapshot, `collections` is an array of `{ id, ...collectionDoc, role }` for
-// every collection the user is a member of, and `error` is undefined. Member
+// every collection the user is a member of, and `error` is undefined. Owned
+// collections also get `memberCount` (everyone with access, owner included)
+// once it has loaded, which updates the list again as members join or leave. Member
 // docs are matched on their own `uid` field (not the doc ID) because a
 // collectionGroup query can only filter on document fields, not on the last
 // segment of each document's path. On a listener error (e.g.
@@ -297,6 +299,58 @@ export function subscribeToUserCollections(uid, callback) {
     }
   }
 
+  // Member counts for the collections this user owns. The collectionGroup query
+  // above only matches the user's own membership docs, so a count needs a
+  // listener on each owned collection's members subcollection (any member may
+  // read it under firestore.rules). A collection whose count listener fails, or
+  // hasn't reported yet, simply has no `memberCount`.
+  const memberListeners = new Map()
+  const memberCounts = new Map()
+  let entries = []
+
+  function emit() {
+    callback(
+      entries.map((entry) =>
+        memberCounts.has(entry.id) ? { ...entry, memberCount: memberCounts.get(entry.id) } : entry
+      )
+    )
+  }
+
+  function syncMemberListeners() {
+    const ownedIds = new Set(entries.filter((entry) => entry.ownerId === uid).map((entry) => entry.id))
+    memberListeners.forEach((stop, id) => {
+      if (!ownedIds.has(id)) {
+        stop()
+        memberListeners.delete(id)
+        memberCounts.delete(id)
+      }
+    })
+    ownedIds.forEach((id) => {
+      if (memberListeners.has(id)) return
+      memberListeners.set(
+        id,
+        onSnapshot(
+          collection(db, 'collections', id, 'members'),
+          (membersSnap) => {
+            memberCounts.set(id, membersSnap.size)
+            emit()
+          },
+          () => {
+            // Leave this card without a count rather than failing the list.
+            memberCounts.delete(id)
+          }
+        )
+      )
+    })
+  }
+
+  function stopMemberListeners() {
+    memberListeners.forEach((stop) => stop())
+    memberListeners.clear()
+    memberCounts.clear()
+    entries = []
+  }
+
   const membershipsQuery = query(collectionGroup(db, 'members'), where('uid', '==', uid))
   // Each snapshot resolves its collection docs asynchronously, so results can
   // finish out of order. Only the most recent snapshot's result may be applied.
@@ -306,7 +360,7 @@ export function subscribeToUserCollections(uid, callback) {
     async (snapshot) => {
       const seq = ++latestSeq
       try {
-        const entries = await Promise.all(
+        const resolved = await Promise.all(
           snapshot.docs.map(async (memberSnap) => {
             const collectionSnap = await readCollectionDoc(
               memberSnap.ref.parent.parent,
@@ -323,7 +377,9 @@ export function subscribeToUserCollections(uid, callback) {
           })
         )
         if (seq !== latestSeq) return
-        callback(entries.filter((entry) => entry != null))
+        entries = resolved.filter((entry) => entry != null)
+        syncMemberListeners()
+        emit()
       } catch (err) {
         if (seq !== latestSeq) return
         callback([], err)
@@ -331,12 +387,14 @@ export function subscribeToUserCollections(uid, callback) {
     },
     (error) => {
       latestSeq++
+      stopMemberListeners()
       callback([], error)
     }
   )
   return () => {
     latestSeq++
     unsubscribe()
+    stopMemberListeners()
   }
 }
 
