@@ -348,7 +348,10 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
   const rolesLoaded = members !== null
   const myRole = getMemberRole(members, user.uid)
   const isViewer = rolesLoaded && isViewerRole(myRole)
-  const showWriteControls = rolesLoaded && canWrite(myRole)
+  // Archived collections are read-only for everyone until the owner restores them.
+  const isArchived = Boolean(collectionData?.archivedAt)
+  const isReadOnly = isViewer || isArchived
+  const showWriteControls = rolesLoaded && canWrite(myRole) && !isArchived
 
   // The remembered sort direction belongs to a collection; reload it when the collection changes
   // (adjusted during render, not in an effect).
@@ -364,8 +367,8 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
   // A remembered field that is no longer a main field is ignored (default order applies).
   const sortField = mainFieldOptions.includes(sortState.field) ? sortState.field : null
 
-  // Viewers can't write: drop back to search mode (adjusted during render, not in an effect).
-  if (isViewer && mode !== 'search') {
+  // Read-only users can't write: drop back to search mode (adjusted during render, not in an effect).
+  if (isReadOnly && mode !== 'search') {
     setMode('search')
     setEditingItemId(null)
     setFormError(null)
@@ -693,7 +696,11 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
         />
       )}
 
-      {isViewer && <ReadOnlyBanner />}
+      {isArchived ? (
+        <ReadOnlyBanner message="Archived — this collection is read-only until the owner restores it." />
+      ) : (
+        isViewer && <ReadOnlyBanner />
+      )}
 
       {mode === 'search' && (
         <>

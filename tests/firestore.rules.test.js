@@ -482,6 +482,33 @@ describe('archiving a collection (archivedAt is owner-only)', () => {
     const db = testEnv.authenticatedContext('viewer-uid').firestore();
     await assertFails(colRef(db).update({ archivedAt: new Date() }));
   });
+
+  describe('items of an archived collection are read-only', () => {
+    beforeEach(async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await context.firestore().collection('collections').doc('col1').update({ archivedAt: new Date() });
+      });
+    });
+
+    it('owner and editor cannot create or update items', async () => {
+      for (const uid of ['owner-uid', 'editor-uid']) {
+        const db = testEnv.authenticatedContext(uid).firestore();
+        await assertFails(db.collection('items').doc(`new-${uid}`).set({ collectionId: 'col1', status: 'have' }));
+        await assertFails(db.collection('items').doc('item1').update({ status: 'want' }));
+      }
+    });
+
+    it('owner can still delete items (needed to delete the collection)', async () => {
+      const db = testEnv.authenticatedContext('owner-uid').firestore();
+      await assertSucceeds(db.collection('items').doc('item1').delete());
+    });
+
+    it('items are writable again after restore', async () => {
+      const db = testEnv.authenticatedContext('owner-uid').firestore();
+      await assertSucceeds(colRef(db).update({ archivedAt: null }));
+      await assertSucceeds(db.collection('items').doc('item1').update({ status: 'want' }));
+    });
+  });
 });
 
 describe('viewer (read-only)', () => {

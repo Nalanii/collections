@@ -23,6 +23,7 @@ vi.mock('../services/items', () => ({
 
 const {
   archiveCollection,
+  deleteCollection,
   removeMember,
   restoreCollection,
   subscribeToCollection,
@@ -238,9 +239,23 @@ describe('Admin archive', () => {
     const { onDone } = renderAdmin(ownerUser)
 
     await user.click(screen.getByRole('button', { name: 'Archive collection' }))
+    expect(archiveCollection).not.toHaveBeenCalled()
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Archive' }))
 
     expect(archiveCollection).toHaveBeenCalledWith('c1')
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
+  })
+
+  it('does not archive when the dialog is cancelled', async () => {
+    mockCollection(collection)
+    const user = userEvent.setup()
+    renderAdmin(ownerUser)
+
+    await user.click(screen.getByRole('button', { name: 'Archive collection' }))
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Cancel' }))
+
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(archiveCollection).not.toHaveBeenCalled()
   })
 
   it('shows an error and stays put when archiving fails', async () => {
@@ -251,6 +266,7 @@ describe('Admin archive', () => {
     const { onDone } = renderAdmin(ownerUser)
 
     await user.click(screen.getByRole('button', { name: 'Archive collection' }))
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Archive' }))
 
     expect(await screen.findByText('Could not archive collection. Please try again.')).toBeTruthy()
     expect(onDone).not.toHaveBeenCalled()
@@ -267,6 +283,46 @@ describe('Admin archive', () => {
 
     expect(restoreCollection).toHaveBeenCalledWith('c1')
     expect(archiveCollection).not.toHaveBeenCalled()
+  })
+
+  it('requires the acknowledgement checkbox before deleting', async () => {
+    mockCollection(collection)
+    deleteCollection.mockResolvedValueOnce()
+    const user = userEvent.setup()
+    const { onDone } = renderAdmin(ownerUser)
+
+    await user.click(screen.getByRole('button', { name: 'Delete collection' }))
+    const dialog = screen.getByRole('alertdialog')
+    const confirm = within(dialog).getByRole('button', { name: 'Delete' })
+    expect(confirm.disabled).toBe(true)
+
+    await user.click(within(dialog).getByRole('checkbox', { name: "I understand this can't be undone" }))
+    await user.click(confirm)
+
+    expect(deleteCollection).toHaveBeenCalledWith('c1')
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
+  })
+
+  it('does not delete when the dialog is cancelled', async () => {
+    mockCollection(collection)
+    const user = userEvent.setup()
+    renderAdmin(ownerUser)
+
+    await user.click(screen.getByRole('button', { name: 'Delete collection' }))
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Cancel' }))
+
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(deleteCollection).not.toHaveBeenCalled()
+  })
+
+  it('makes an archived collection read-only, even for the owner', () => {
+    mockCollection({ ...collection, archivedAt: { seconds: 1 } })
+    renderAdmin(ownerUser)
+
+    expect(screen.getByText(/Archived — this collection is read-only/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Save changes' })).toBeNull()
+    expect(screen.queryByLabelText('Invite email')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Restore collection' })).toBeTruthy()
   })
 
   it('does not offer archive to non-owners', () => {

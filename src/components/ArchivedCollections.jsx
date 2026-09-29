@@ -30,6 +30,11 @@ export function ArchivedCollections({ user, onBack, onOpenCollection = () => {} 
     setRestoringId(collectionId)
     try {
       await restoreCollection(collectionId)
+      // The list subscription only re-emits on membership changes, not on edits to
+      // the collection doc itself, so reflect the restore locally.
+      setCollections((prev) =>
+        prev?.map((c) => (c.id === collectionId ? { ...c, archivedAt: null } : c)) ?? prev
+      )
     } catch (err) {
       console.error(err)
       setRestoreError({ id: collectionId, message: 'Could not restore collection. Please try again.' })

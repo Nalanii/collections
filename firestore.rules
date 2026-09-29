@@ -26,6 +26,10 @@ service cloud.firestore {
       return isMember(collectionId) && memberRole(collectionId) in ['owner', 'editor'];
     }
 
+    function isArchived(collectionId) {
+      return get(/databases/$(database)/documents/collections/$(collectionId)).data.get('archivedAt', null) != null;
+    }
+
     match /users/{uid} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
@@ -124,8 +128,12 @@ service cloud.firestore {
       // another editor must read back as missing (a conflict the UI can explain)
       // rather than failing with permission-denied.
       allow read: if (isSignedIn() && resource == null) || isMember(resource.data.collectionId);
-      allow create: if isOwnerOrEditor(request.resource.data.collectionId);
+      // Items of an archived collection are read-only. Deletes stay allowed so
+      // deleting an archived collection can still remove its items.
+      allow create: if isOwnerOrEditor(request.resource.data.collectionId)
+        && !isArchived(request.resource.data.collectionId);
       allow update: if isOwnerOrEditor(resource.data.collectionId)
+        && !isArchived(resource.data.collectionId)
         && request.resource.data.collectionId == resource.data.collectionId;
       allow delete: if isOwnerOrEditor(resource.data.collectionId);
     }

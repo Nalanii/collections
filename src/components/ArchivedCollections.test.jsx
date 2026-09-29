@@ -87,6 +87,13 @@ describe('ArchivedCollections', () => {
     expect(onOpenCollection).not.toHaveBeenCalled()
   })
 
+  it('removes a restored collection from the list without a new snapshot', async () => {
+    renderArchived([{ id: 'b', name: 'Games', ownerId: 'me', role: 'owner', archivedAt }])
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Restore' }))
+    expect(await screen.findByText('No archived collections')).toBeTruthy()
+    expect(screen.queryByText('Games')).toBeNull()
+  })
+
   it('shows a per-card error when restoring fails', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     restoreCollection.mockRejectedValueOnce(new Error('denied'))

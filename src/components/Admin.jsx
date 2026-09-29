@@ -56,6 +56,7 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [archiving, setArchiving] = useState(false)
+  const [confirmingArchive, setConfirmingArchive] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   // DOM slot in the sticky title row where CollectionForm portals its Save/Cancel buttons.
   const [actionsSlot, setActionsSlot] = useState(null)
@@ -291,7 +292,6 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
       console.error(err)
       setError('Could not delete collection. Please try again.')
       setDeleting(false)
-      setConfirmingDelete(false)
     }
   }
 
@@ -341,7 +341,9 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
   const rolesLoaded = members !== null
   const myRole = getMemberRole(members, user.uid)
   const isViewer = isEditMode && rolesLoaded && isViewerRole(myRole)
-  const showWriteControls = rolesLoaded && canWrite(myRole)
+  // Archived collections are read-only for everyone until the owner restores them.
+  const isArchived = isEditMode && Boolean(collection.archivedAt)
+  const showWriteControls = rolesLoaded && canWrite(myRole) && !isArchived
 
   return (
     <div className="admin-screen">
@@ -349,7 +351,11 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
         <h2 className="admin-title">{isEditMode ? 'Edit collection' : 'New collection'}</h2>
         <div className="admin-title-actions" ref={setActionsSlot} />
       </div>
-      {isViewer && <ReadOnlyBanner />}
+      {isArchived ? (
+        <ReadOnlyBanner message="Archived — this collection is read-only until the owner restores it." />
+      ) : (
+        isViewer && <ReadOnlyBanner />
+      )}
 
       {showWriteControls && (conflict || changedByOthers) && (
         <div className="admin-conflict" role={conflict ? 'alert' : 'status'}>
@@ -453,6 +459,35 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
         />
       )}
 
+      {confirmingArchive && (
+        <ConfirmDialog
+          title="Archive this collection?"
+          message="Archiving tucks this collection away without deleting anything. It disappears from the home screen for you and every member you've shared it with, and all items and members are kept. Members can still open it from Archived collections, but only you can restore it."
+          confirmLabel="Archive"
+          cancelLabel="Cancel"
+          onConfirm={() => {
+            setConfirmingArchive(false)
+            handleArchiveToggle()
+          }}
+          onCancel={() => setConfirmingArchive(false)}
+        />
+      )}
+
+      {confirmingDelete && (
+        <ConfirmDialog
+          title="Delete this collection?"
+          message="This permanently deletes the collection along with all of its items, members and pending invites. Everyone you've shared it with loses access. This can't be undone. If you just want it out of the way, archive it instead."
+          acknowledgement="I understand this can't be undone"
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          onConfirm={() => {
+            setConfirmingDelete(false)
+            handleConfirmDelete()
+          }}
+          onCancel={() => setConfirmingDelete(false)}
+        />
+      )}
+
       {pendingTransfer && (
         <TransferOwnershipDialog
           member={pendingTransfer}
@@ -550,52 +585,24 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
 
       {isOwner && (
         <div className="admin-danger-zone">
-          {!confirmingDelete ? (
-            <>
-              <button
-                type="button"
-                className="admin-archive-button"
-                onClick={handleArchiveToggle}
-                disabled={archiving}
-              >
-                {archiving
-                  ? collection.archivedAt ? 'Restoring…' : 'Archiving…'
-                  : collection.archivedAt ? 'Restore collection' : 'Archive collection'}
-              </button>
-              <button
-                type="button"
-                className="admin-delete-button"
-                onClick={() => setConfirmingDelete(true)}
-                disabled={archiving}
-              >
-                Delete collection
-              </button>
-            </>
-          ) : (
-            <div className="admin-delete-confirm">
-              <p className="admin-delete-confirm-text">
-                Are you sure? This can't be undone.
-              </p>
-              <div className="admin-delete-confirm-actions">
-                <button
-                  type="button"
-                  className="admin-delete-confirm-button"
-                  onClick={handleConfirmDelete}
-                  disabled={deleting}
-                >
-                  {deleting ? 'Deleting…' : 'Confirm delete'}
-                </button>
-                <button
-                  type="button"
-                  className="admin-delete-cancel-button"
-                  onClick={() => setConfirmingDelete(false)}
-                  disabled={deleting}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
+          <button
+            type="button"
+            className="admin-archive-button"
+            onClick={collection.archivedAt ? handleArchiveToggle : () => setConfirmingArchive(true)}
+            disabled={archiving || deleting}
+          >
+            {archiving
+              ? collection.archivedAt ? 'Restoring…' : 'Archiving…'
+              : collection.archivedAt ? 'Restore collection' : 'Archive collection'}
+          </button>
+          <button
+            type="button"
+            className="admin-delete-button"
+            onClick={() => setConfirmingDelete(true)}
+            disabled={archiving || deleting}
+          >
+            {deleting ? 'Deleting…' : 'Delete collection'}
+          </button>
         </div>
       )}
     </div>
