@@ -5,7 +5,7 @@ import { PendingInvites } from './PendingInvites'
 import { Spinner } from './Spinner'
 import './Home.css'
 
-export function Home({ user, onCreateCollection, onOpenCollection = () => {} }) {
+export function Home({ user, onCreateCollection, onOpenCollection = () => {}, onOpenArchived = () => {} }) {
   const [collections, setCollections] = useState(null)
   // The error is tagged with the uid it belongs to, so it clears when the user changes.
   const [errorState, setErrorState] = useState({ uid: null, message: null })
@@ -26,6 +26,9 @@ export function Home({ user, onCreateCollection, onOpenCollection = () => {} }) 
   useCollectionsPrefetch(collections?.map((c) => c.id))
 
   const loading = collections === null && !error
+  // Archived collections (archivedAt set) live in the Archived view, not the grid.
+  const activeCollections = collections?.filter((c) => !c.archivedAt) ?? []
+  const hasArchived = collections?.some((c) => c.archivedAt) ?? false
 
   return (
     <div className="home-screen">
@@ -35,7 +38,7 @@ export function Home({ user, onCreateCollection, onOpenCollection = () => {} }) 
 
       {error && <p className="home-error">{error}</p>}
 
-      {!loading && !error && collections.length === 0 && (
+      {!loading && !error && activeCollections.length === 0 && (
         <div className="home-empty">
           <p className="home-empty-title">No collections yet</p>
           <p className="home-empty-text">
@@ -44,9 +47,9 @@ export function Home({ user, onCreateCollection, onOpenCollection = () => {} }) 
         </div>
       )}
 
-      {!loading && !error && collections.length > 0 && (
+      {!loading && !error && activeCollections.length > 0 && (
         <div className="home-grid">
-          {collections.map((c) => (
+          {activeCollections.map((c) => (
             <div
               key={c.id}
               className="collection-card"
@@ -80,6 +83,12 @@ export function Home({ user, onCreateCollection, onOpenCollection = () => {} }) 
             </div>
           ))}
         </div>
+      )}
+
+      {!loading && !error && hasArchived && (
+        <button type="button" className="home-archived-link" onClick={onOpenArchived}>
+          Archived collections
+        </button>
       )}
 
       <button

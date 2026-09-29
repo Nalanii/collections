@@ -5,9 +5,11 @@ import userEvent from '@testing-library/user-event'
 
 vi.mock('../services/collections', () => ({
   backfillMemberProfile: vi.fn(() => Promise.resolve()),
+  archiveCollection: vi.fn(() => Promise.resolve()),
   createCollection: vi.fn(),
   deleteCollection: vi.fn(),
   removeMember: vi.fn(() => Promise.resolve()),
+  restoreCollection: vi.fn(() => Promise.resolve()),
   subscribeToCollection: vi.fn(),
   subscribeToMembers: vi.fn(),
   transferOwnership: vi.fn(() => Promise.resolve()),
@@ -19,9 +21,14 @@ vi.mock('../services/items', () => ({
   subscribeToItems: vi.fn(() => () => {}),
 }))
 
-const { removeMember, subscribeToCollection, subscribeToMembers, transferOwnership } = await import(
-  '../services/collections'
-)
+const {
+  archiveCollection,
+  removeMember,
+  restoreCollection,
+  subscribeToCollection,
+  subscribeToMembers,
+  transferOwnership,
+} = await import('../services/collections')
 const { Admin } = await import('./Admin')
 
 const collection = { name: 'Books', emoji: '📚', fieldDefs: [], ownerId: 'owner' }
@@ -205,5 +212,67 @@ describe('Admin ownership transfer', () => {
 
     expect(await screen.findByText('Could not transfer ownership. Please try again.')).toBeTruthy()
     consoleError.mockRestore()
+  })
+})
+
+describe('Admin archive', () => {
+  function mockCollection(data) {
+    subscribeToCollection.mockImplementation((id, callback) => {
+      callback(data)
+      return () => {}
+    })
+    subscribeToMembers.mockImplementation((id, callback) => {
+      callback(members)
+      return () => {}
+    })
+  }
+
+  afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+  })
+
+  it('archives the collection and goes home', async () => {
+    mockCollection(collection)
+    const user = userEvent.setup()
+    const { onDone } = renderAdmin(ownerUser)
+
+    await user.click(screen.getByRole('button', { name: 'Archive collection' }))
+
+    expect(archiveCollection).toHaveBeenCalledWith('c1')
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
+  })
+
+  it('shows an error and stays put when archiving fails', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockCollection(collection)
+    archiveCollection.mockRejectedValueOnce(new Error('denied'))
+    const user = userEvent.setup()
+    const { onDone } = renderAdmin(ownerUser)
+
+    await user.click(screen.getByRole('button', { name: 'Archive collection' }))
+
+    expect(await screen.findByText('Could not archive collection. Please try again.')).toBeTruthy()
+    expect(onDone).not.toHaveBeenCalled()
+    consoleError.mockRestore()
+  })
+
+  it('offers restore instead of archive for an archived collection', async () => {
+    mockCollection({ ...collection, archivedAt: { seconds: 1 } })
+    const user = userEvent.setup()
+    renderAdmin(ownerUser)
+
+    expect(screen.queryByRole('button', { name: 'Archive collection' })).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Restore collection' }))
+
+    expect(restoreCollection).toHaveBeenCalledWith('c1')
+    expect(archiveCollection).not.toHaveBeenCalled()
+  })
+
+  it('does not offer archive to non-owners', () => {
+    mockCollection(collection)
+    renderAdmin(editorUser)
+
+    expect(screen.queryByRole('button', { name: 'Archive collection' })).toBeNull()
   })
 })

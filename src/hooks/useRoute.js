@@ -5,6 +5,10 @@ function parsePath(pathname) {
     return { view: 'admin', collectionId: null }
   }
 
+  if (pathname === '/archived') {
+    return { view: 'archived', collectionId: null }
+  }
+
   const adminMatch = pathname.match(/^\/admin\/([^/]+)$/)
   if (adminMatch) {
     return { view: 'admin', collectionId: decodeURIComponent(adminMatch[1]) }

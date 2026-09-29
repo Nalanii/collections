@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { CollectionForm } from './CollectionForm'
 import {
+  archiveCollection,
   backfillMemberProfile,
   createCollection,
   deleteCollection,
   removeMember,
+  restoreCollection,
   subscribeToCollection,
   subscribeToMembers,
   transferOwnership,
@@ -53,6 +55,7 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
   const loadError = currentLoad?.error ?? null
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [archiving, setArchiving] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   // DOM slot in the sticky title row where CollectionForm portals its Save/Cancel buttons.
   const [actionsSlot, setActionsSlot] = useState(null)
@@ -250,6 +253,31 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
       setMemberActionError('Could not transfer ownership. Please try again.')
     } finally {
       setMemberBusyKey(null)
+    }
+  }
+
+  // Archives (then goes home) or, for an already archived collection, restores it
+  // and stays put; the live collection subscription flips the button back.
+  async function handleArchiveToggle() {
+    const restoring = Boolean(collection.archivedAt)
+    setError(null)
+    setArchiving(true)
+    try {
+      if (restoring) {
+        await restoreCollection(collectionId)
+      } else {
+        await archiveCollection(collectionId)
+        onDone()
+      }
+    } catch (err) {
+      console.error(err)
+      setError(
+        restoring
+          ? 'Could not restore collection. Please try again.'
+          : 'Could not archive collection. Please try again.'
+      )
+    } finally {
+      setArchiving(false)
     }
   }
 
@@ -523,13 +551,26 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
       {isOwner && (
         <div className="admin-danger-zone">
           {!confirmingDelete ? (
-            <button
-              type="button"
-              className="admin-delete-button"
-              onClick={() => setConfirmingDelete(true)}
-            >
-              Delete collection
-            </button>
+            <>
+              <button
+                type="button"
+                className="admin-archive-button"
+                onClick={handleArchiveToggle}
+                disabled={archiving}
+              >
+                {archiving
+                  ? collection.archivedAt ? 'Restoring…' : 'Archiving…'
+                  : collection.archivedAt ? 'Restore collection' : 'Archive collection'}
+              </button>
+              <button
+                type="button"
+                className="admin-delete-button"
+                onClick={() => setConfirmingDelete(true)}
+                disabled={archiving}
+              >
+                Delete collection
+              </button>
+            </>
           ) : (
             <div className="admin-delete-confirm">
               <p className="admin-delete-confirm-text">

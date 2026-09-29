@@ -44,7 +44,11 @@ service cloud.firestore {
       // member's doc role 'owner' and demotes the owner's own doc (checked with
       // getAfter/existsAfter, which see the batch's final state). That leaves
       // exactly one owner doc, matching ownerId.
+      // archivedAt (archive/restore) is owner-only: editors may update the doc
+      // but must leave it unchanged (absent counts as null).
       allow update: if isOwnerOrEditor(collectionId)
+        && (request.resource.data.get('archivedAt', null) == resource.data.get('archivedAt', null)
+          || isOwner(collectionId))
         && (request.resource.data.ownerId == resource.data.ownerId ||
           (isOwner(collectionId)
            && resource.data.ownerId == request.auth.uid

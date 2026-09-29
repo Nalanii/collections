@@ -441,6 +441,49 @@ describe('ownership transfer', () => {
   });
 });
 
+describe('archiving a collection (archivedAt is owner-only)', () => {
+  beforeEach_seed();
+
+  const colRef = (db) => db.collection('collections').doc('col1');
+
+  it('owner can archive and restore', async () => {
+    const db = testEnv.authenticatedContext('owner-uid').firestore();
+    await assertSucceeds(colRef(db).update({ archivedAt: new Date() }));
+    await assertSucceeds(colRef(db).update({ archivedAt: null }));
+  });
+
+  it('editor cannot archive', async () => {
+    const db = testEnv.authenticatedContext('editor-uid').firestore();
+    await assertFails(colRef(db).update({ archivedAt: new Date() }));
+  });
+
+  it('editor cannot restore an archived collection', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await context.firestore().collection('collections').doc('col1').update({ archivedAt: new Date() });
+    });
+    const db = testEnv.authenticatedContext('editor-uid').firestore();
+    await assertFails(colRef(db).update({ archivedAt: null }));
+  });
+
+  it('editor can still update other fields of an archived collection', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await context.firestore().collection('collections').doc('col1').update({ archivedAt: new Date() });
+    });
+    const db = testEnv.authenticatedContext('editor-uid').firestore();
+    await assertSucceeds(colRef(db).update({ name: 'Renamed' }));
+  });
+
+  it('editor writing archivedAt: null on a legacy doc without the field is not a change', async () => {
+    const db = testEnv.authenticatedContext('editor-uid').firestore();
+    await assertSucceeds(colRef(db).update({ archivedAt: null }));
+  });
+
+  it('viewer cannot archive', async () => {
+    const db = testEnv.authenticatedContext('viewer-uid').firestore();
+    await assertFails(colRef(db).update({ archivedAt: new Date() }));
+  });
+});
+
 describe('viewer (read-only)', () => {
   beforeEach_seed();
 

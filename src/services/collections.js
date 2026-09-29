@@ -466,6 +466,22 @@ export async function transferOwnership(collectionId, currentOwnerUid, newOwnerU
   await batch.commit()
 }
 
+// Archiving is a soft, collection-wide state: `archivedAt` is a server timestamp
+// while archived and `null` when active/restored (legacy docs without the field
+// count as active). It is stored on the collection doc itself, so it applies to
+// EVERY member: an archived collection disappears from all members' Home grids
+// and shows up in all of their Archived views. Only the owner may archive or
+// restore (firestore.rules refuses an `archivedAt` change from anyone else).
+// No data is deleted, and `updatedAt` is left alone so archiving is not treated
+// as a content edit by the concurrent-edit conflict check.
+export function archiveCollection(collectionId) {
+  return updateDoc(doc(db, 'collections', collectionId), { archivedAt: serverTimestamp() })
+}
+
+export function restoreCollection(collectionId) {
+  return updateDoc(doc(db, 'collections', collectionId), { archivedAt: null })
+}
+
 // Deletes a `collections/{collectionId}/members/{uid}` doc. Used both for an
 // owner revoking another member's access and for a member leaving on their
 // own -- firestore.rules' delete rule for this path already distinguishes

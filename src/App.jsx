@@ -1,5 +1,6 @@
 import './App.css'
 import { Admin } from './components/Admin'
+import { ArchivedCollections } from './components/ArchivedCollections'
 import { CollectionView } from './components/CollectionView'
 import { DecorBackground } from './components/DecorBackground'
 import { Header } from './components/Header'
@@ -42,6 +43,7 @@ function App() {
 
   const showAdmin = route.view === 'admin'
   const showCollectionView = route.view === 'collection'
+  const showArchived = route.view === 'archived'
 
   let content
   if (showAdmin) {
@@ -65,17 +67,26 @@ function App() {
         onManage={(collectionId) => navigate(`/admin/${encodeURIComponent(collectionId)}`)}
       />
     )
+  } else if (showArchived) {
+    content = (
+      <ArchivedCollections
+        user={user}
+        onBack={goHome}
+        onOpenCollection={(collectionId) => navigate(`/collections/${encodeURIComponent(collectionId)}`)}
+      />
+    )
   } else {
     content = (
       <Home
         user={user}
         onCreateCollection={() => navigate('/admin')}
+        onOpenArchived={() => navigate('/archived')}
         onOpenCollection={(collectionId) => navigate(`/collections/${encodeURIComponent(collectionId)}`)}
       />
     )
   }
 
-  const showHome = !showAdmin && !showCollectionView
+  const showHome = !showAdmin && !showCollectionView && !showArchived
 
   return (
     <div className="app-shell">

@@ -29,8 +29,22 @@ vi.mock('firebase/firestore', () => ({
 }))
 vi.mock('./firebase', () => ({ db: {} }))
 
-import { collection, collectionGroup, getDoc, onSnapshot, query, writeBatch } from 'firebase/firestore'
-import { subscribeToUserCollections, transferOwnership, updateCollection } from './collections'
+import {
+  collection,
+  collectionGroup,
+  getDoc,
+  onSnapshot,
+  query,
+  updateDoc,
+  writeBatch,
+} from 'firebase/firestore'
+import {
+  archiveCollection,
+  restoreCollection,
+  subscribeToUserCollections,
+  transferOwnership,
+  updateCollection,
+} from './collections'
 import { ConflictError } from './conflicts'
 
 function ts(millis) {
@@ -262,6 +276,28 @@ describe('transferOwnership', () => {
     const batch = mockBatch()
     batch.commit.mockRejectedValueOnce(new Error('permission-denied'))
     await expect(transferOwnership('col1', 'old', 'new')).rejects.toThrow('permission-denied')
+  })
+})
+
+describe('archiveCollection / restoreCollection', () => {
+  beforeEach(() => {
+    updateDoc.mockReset()
+    updateDoc.mockResolvedValue(undefined)
+  })
+
+  it('archives by setting only archivedAt to a server timestamp (updatedAt untouched)', async () => {
+    await archiveCollection('col1')
+    expect(updateDoc).toHaveBeenCalledWith({ path: 'collections/col1' }, { archivedAt: 'SERVER_TIMESTAMP' })
+  })
+
+  it('restores by clearing archivedAt to null', async () => {
+    await restoreCollection('col1')
+    expect(updateDoc).toHaveBeenCalledWith({ path: 'collections/col1' }, { archivedAt: null })
+  })
+
+  it('rejects when the update fails', async () => {
+    updateDoc.mockRejectedValueOnce(new Error('permission-denied'))
+    await expect(archiveCollection('col1')).rejects.toThrow('permission-denied')
   })
 })
 

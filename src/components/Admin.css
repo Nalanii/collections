@@ -150,7 +150,27 @@
   padding-top: 1rem;
   border-top: 1px solid var(--color-border);
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
+  gap: 0.75rem;
+}
+
+.admin-archive-button {
+  padding: 0.6rem 1rem;
+  min-height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: transparent;
+  color: var(--color-text);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-archive-button:disabled,
+.admin-delete-button:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .admin-delete-button {
