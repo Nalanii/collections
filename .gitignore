@@ -24,6 +24,13 @@ dist-ssr
 *.sln
 *.sw?
 
+# Firestore/Auth backups and service-account keys (contain user data / secrets)
+backups/
+users.json
+.env.backup
+*-service-account*.json
+serviceAccount*.json
+
 # Scratch files
 issue-body.md
 docs/superpowers/plans/

@@ -13,6 +13,8 @@
     "test:unit": "vitest run --exclude tests/firestore.rules.test.js",
     "import-sheet": "node scripts/import-sheet.js",
     "trim-item-fields": "node scripts/trim-item-fields.js",
+    "backup-firestore": "node scripts/backup-firestore.js",
+    "backup-drive-auth": "node scripts/backup-drive-auth.js",
     "cleanup-phantom-collections": "node scripts/cleanup-phantom-collections.js"
   },
   "dependencies": {

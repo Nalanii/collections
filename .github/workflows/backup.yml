@@ -1,0 +1,46 @@
+name: Backup
+
+# Daily JSON dump of Firestore + Auth users to Google Drive (issue #53).
+# See docs/backups.md. The repo is public: never upload the dump as a workflow
+# artifact (artifacts are downloadable by anyone) and never print its contents.
+
+on:
+  schedule:
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Dump to Drive
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Dump Firestore and Auth users to Drive
+        env:
+          BACKUP_SERVICE_ACCOUNT: ${{ secrets.BACKUP_SERVICE_ACCOUNT }}
+          DRIVE_CLIENT_ID: ${{ secrets.DRIVE_CLIENT_ID }}
+          DRIVE_CLIENT_SECRET: ${{ secrets.DRIVE_CLIENT_SECRET }}
+          DRIVE_REFRESH_TOKEN: ${{ secrets.DRIVE_REFRESH_TOKEN }}
+          DRIVE_FOLDER_ID: ${{ secrets.DRIVE_FOLDER_ID }}
+        run: |
+          echo "$BACKUP_SERVICE_ACCOUNT" > "$RUNNER_TEMP/backup-service-account.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/backup-service-account.json"
+          # Fail loudly if Drive isn't configured: a local-only dump on an
+          # ephemeral runner is no backup at all.
+          for v in DRIVE_CLIENT_ID DRIVE_CLIENT_SECRET DRIVE_REFRESH_TOKEN DRIVE_FOLDER_ID; do
+            [ -n "${!v}" ] || { echo "::error::$v secret is not set"; exit 1; }
+          done
+          node scripts/backup-firestore.js --project collections-tracker-nls --out "$RUNNER_TEMP/backups"

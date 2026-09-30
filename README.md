@@ -190,6 +190,7 @@ repo secret `FIREBASE_SERVICE_ACCOUNT`. To set it up (or rotate it):
 | `npm run test:rules` | Run Firestore security rules tests against the emulator |
 | `npm run test:unit` | Run import-script unit tests (no emulator needed) |
 | `npm run import-sheet` | Import a Google Sheets export into a collection (see above) |
+| `npm run backup-firestore` | Dump all Firestore data to dated JSON files (see [docs/backups.md](docs/backups.md)) |
 | `npm run deploy` | Build and deploy Hosting + Firestore rules/indexes |
 
 ## Project Structure
