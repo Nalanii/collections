@@ -105,7 +105,7 @@ Service accounts have no storage quota on a personal Drive, so uploads use OAuth
 - Targets production using Admin credentials (`GOOGLE_APPLICATION_CREDENTIALS`), or the emulator if `FIRESTORE_EMULATOR_HOST` is set.
 - Timestamps are written as `{"__type":"timestamp","value":"<ISO>"}`; references, geopoints and bytes are tagged the same way.
 
-Run it before any bulk script (`import-sheet`, `cleanup-phantom-collections`, `trim-item-fields --apply`).
+Run it before any bulk script (`import-sheet`, `cleanup-phantom-collections`, `trim-item-fields` without `--dry-run`).
 
 There is no automated restore script: the dump is a last-resort, vendor-neutral copy. To restore, read the JSON and write each `docs[]` entry back with the Admin SDK (`exists: false` entries are phantom parents and can be skipped), converting tagged values back to `Timestamp`, etc.
 
