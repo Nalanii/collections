@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useLayoutEffect, useRef, useState } from 'react'
 import cassetteSvg from '../assets/icons/cassette.svg?raw'
 import cardSvg from '../assets/icons/card.svg?raw'
 import coinSvg from '../assets/icons/coin.svg?raw'
@@ -8,230 +8,183 @@ import legoSvg from '../assets/icons/lego.svg?raw'
 import stampSvg from '../assets/icons/stamp.svg?raw'
 import teddySvg from '../assets/icons/teddy.svg?raw'
 import vinylSvg from '../assets/icons/vinyl.svg?raw'
+import { iconSpacing, layoutDecor, sameZone } from './decorLayout'
 import './DecorBackground.css'
 
 const ICONS = [vinylSvg, dvdSvg, cardSvg, cassetteSvg, stampSvg, coinSvg, legoSvg, teddySvg, dollSvg]
+// Matches the .decor-icon--color-N rules in DecorBackground.css.
+const COLOR_COUNT = 4
+// A window drag resizes the layer every frame. Relaying out once it pauses
+// for this long, instead of on every frame, settles the edges once rather
+// than piling up dozens of small crops; icons are positioned from the
+// layer's center, so they stay put meanwhile.
+const RESIZE_SETTLE_MS = 150
 
-// Deterministic pseudo-random (integer hash) so a given layout always
-// produces the same positions. Uses Math.imul to keep every multiplication
-// inside safe 32-bit integer range — plain `x * x * k` overflows float64's
-// 53-bit precision for larger seeds, which silently collides different
-// seeds onto the same output.
-function pseudoRandom(seed) {
-  let t = (seed + 0x6d2b79f5) | 0
-  t = Math.imul(t ^ (t >>> 15), t | 1)
-  t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
-  return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-}
+const NO_ZONES = []
+const DecorRegisterContext = createContext(null)
+const DecorZonesContext = createContext(NO_ZONES)
 
-function inZone(x, y, zone) {
-  return !!zone && x > zone.left && x < zone.right && y > zone.top && y < zone.bottom
-}
+// Holds the elements icons should stay clear of. It sits above both the
+// background and every page, so a page can mark its key content with
+// useDecorAvoid without the background knowing about any particular page.
+// Register and the zone list are separate contexts so registering doesn't
+// re-render the page that registered.
+export function DecorProvider({ children }) {
+  const [zones, setZones] = useState(NO_ZONES)
+  const register = useCallback((zone) => {
+    setZones((current) => [...current, zone])
+    return () => setZones((current) => current.filter((z) => z !== zone))
+  }, [])
 
-// Bridson's Poisson-disk sampling: unlike best-candidate (which only
-// *prefers* far-apart points but can still settle for a mediocre one when
-// its sample runs dry), this enforces a hard minimum distance between every
-// pair of icons and keeps growing the pattern outward from existing points
-// until the whole area is saturated. That combination — a hard floor on
-// closeness, plus growing until no more room is left — is what rules out
-// both tight clusters and dead gaps by construction, not just by bias.
-// Working in real measured pixels (rather than percent-of-an-assumed-size)
-// means the content's no-go zone is exactly as big as the content actually
-// renders at, at whatever width the page happens to be — no per-breakpoint
-// guessing that goes stale the moment the content's fraction of the screen
-// changes.
-function buildPositions(minDist, zone, width, height, seedBase, maxPoints) {
-  const cellSize = minDist / Math.SQRT2
-  const gridW = Math.max(1, Math.ceil(width / cellSize))
-  const gridH = Math.max(1, Math.ceil(height / cellSize))
-  const grid = new Array(gridW * gridH).fill(-1)
-  const points = []
-  const active = []
-  let calls = 0
-  const rand = () => pseudoRandom(seedBase + calls++ * 92821 + 1)
-
-  function cellOf(x, y) {
-    const gx = Math.min(gridW - 1, Math.max(0, Math.floor(x / cellSize)))
-    const gy = Math.min(gridH - 1, Math.max(0, Math.floor(y / cellSize)))
-    return { gx, gy }
-  }
-
-  function farEnoughFromExisting(x, y) {
-    const { gx, gy } = cellOf(x, y)
-    for (let oy = -2; oy <= 2; oy++) {
-      for (let ox = -2; ox <= 2; ox++) {
-        const nx = gx + ox
-        const ny = gy + oy
-        if (nx < 0 || ny < 0 || nx >= gridW || ny >= gridH) continue
-        const idx = grid[ny * gridW + nx]
-        if (idx === -1) continue
-        const p = points[idx]
-        if (Math.hypot(p.x - x, p.y - y) < minDist) return false
-      }
-    }
-    return true
-  }
-
-  function tryAdd(x, y) {
-    if (x < 0 || x >= width || y < 0 || y >= height) return false
-    if (inZone(x, y, zone)) return false
-    if (!farEnoughFromExisting(x, y)) return false
-    const idx = points.length
-    points.push({ x, y })
-    active.push(idx)
-    const { gx, gy } = cellOf(x, y)
-    grid[gy * gridW + gx] = idx
-    return true
-  }
-
-  // Seed with a bounded search for a first valid point — needed because the
-  // very first random draw can land inside the exclusion zone.
-  for (let tries = 0; points.length === 0 && tries < 500; tries++) {
-    tryAdd(rand() * width, rand() * height)
-  }
-
-  const candidatesPerActive = 30
-  while (active.length > 0 && points.length < maxPoints) {
-    const activeSlot = Math.floor(rand() * active.length)
-    const p = points[active[activeSlot]]
-    let placed = false
-    for (let i = 0; i < candidatesPerActive; i++) {
-      const angle = rand() * Math.PI * 2
-      const radius = minDist * (1 + rand())
-      if (tryAdd(p.x + Math.cos(angle) * radius, p.y + Math.sin(angle) * radius)) {
-        placed = true
-        break
-      }
-    }
-    if (!placed) active.splice(activeSlot, 1)
-  }
-
-  return points
-}
-
-// Roughly one icon per this many square px — density stays visually
-// consistent from a narrow phone up through an ultra-wide desktop instead of
-// jumping between fixed per-breakpoint counts. Poisson-disk spacing (below)
-// is derived from this so the average density matches what it always has.
-const AREA_PER_ICON = 21000
-
-// For Bridson's algorithm the *density* is an emergent result of the minimum
-// spacing, not a direct input — a random Poisson-disk packing settles at
-// roughly 1.1x the area of the disk implied by that spacing (well short of
-// hexagonal-max packing). Solving that back out for the desired area-per-icon
-// gives the spacing to pass in.
-const MIN_ICON_DIST = Math.sqrt(AREA_PER_ICON / 1.1)
-
-function DecorIcon({ svg, x, y, size }) {
   return (
-    <span
-      className="decor-icon"
-      style={{ left: `${x}px`, top: `${y}px`, '--icon-size': `${size}px` }}
-      dangerouslySetInnerHTML={{ __html: svg }}
-    />
+    <DecorRegisterContext.Provider value={register}>
+      <DecorZonesContext.Provider value={zones}>{children}</DecorZonesContext.Provider>
+    </DecorRegisterContext.Provider>
   )
 }
 
-// Size is rolled from a seed unrelated to the icon-selection index or any
-// small period, so it doesn't lock each icon to a fixed size the way a CSS
-// nth-child rule would if its modulus shared a factor with ICONS.length.
-function iconSize(i) {
-  const roll = pseudoRandom(i * 2654435761 + 104729)
-  return 30 + roll * 20
+// Keeps icons clear of the element in `ref` for as long as the calling
+// component is mounted. shape: 'rect' (rounded-corner clearance) or
+// 'ellipse' (for round content, so its bounding box corners stay usable).
+// The hook has to read this file's private contexts, so it lives beside them.
+// oxlint-disable-next-line react/only-export-components
+export function useDecorAvoid(ref, shape = 'rect') {
+  const register = useContext(DecorRegisterContext)
+  // Layout effect so the zone is in place before the first paint, and icons
+  // never flash on top of content that's just appeared.
+  useLayoutEffect(() => {
+    if (!register) return undefined
+    return register({ ref, shape })
+  }, [register, ref, shape])
 }
 
-// Picking ICONS[i % ICONS.length] directly would repeat the same icon
-// whenever a run of indices shares a factor with ICONS.length. Hashing the
-// index first decorrelates icon choice from position entirely.
-function iconFor(i) {
-  return ICONS[Math.floor(pseudoRandom(i * 40503 + 19) * ICONS.length) % ICONS.length]
+function measureZones(zones, origin) {
+  const avoid = []
+  for (const { ref, shape } of zones) {
+    const el = ref.current
+    if (!el) continue
+    const box = el.getBoundingClientRect()
+    // display: none (e.g. a hidden theme variant) measures as an empty box.
+    if (box.width === 0 && box.height === 0) continue
+    avoid.push({
+      shape,
+      left: Math.round(box.left - origin.left),
+      top: Math.round(box.top - origin.top),
+      right: Math.round(box.right - origin.left),
+      bottom: Math.round(box.bottom - origin.top),
+    })
+  }
+  return avoid
 }
 
-// Content padded by a fixed px margin (enough to clear an icon's own
-// radius) rather than a percentage, since the margin an icon needs is a
-// fixed physical size regardless of how wide the viewport is.
-const ZONE_MARGIN = 30
+function sameZones(a, b) {
+  return a.length === b.length && a.every((zone, i) => sameZone(zone, b[i]))
+}
 
-// hostRef/contentRef are optional: when a caller just wants a full-bleed
-// decorative background with no content to avoid (e.g. the signed-in home
-// screen), it can render <DecorBackground /> with neither prop and this
-// falls back to its own parent element as the host, with no exclusion zone.
-export function DecorBackground({ hostRef, contentRef }) {
+// One fixed, viewport-sized layer rendered once at the app shell, behind
+// every screen. Because it never unmounts, moving between pages never
+// re-scatters it. Content that registers with useDecorAvoid gets icons kept
+// clear of it; when that content comes or goes the rest of the pattern stays
+// put, icons fade in only where space opened, and the few right beside newly
+// appeared content glide back to a natural gap. A resize keeps the pattern
+// centered and, once it pauses, trims or fills in the edges.
+export function DecorBackground() {
   const rootRef = useRef(null)
+  const zones = useContext(DecorZonesContext)
   const [layout, setLayout] = useState(null)
+  // The last layout applied, readable from observer and timer callbacks
+  // without waiting for a render.
+  const layoutRef = useRef(null)
 
   useLayoutEffect(() => {
-    const host = hostRef?.current ?? rootRef.current?.parentElement
-    if (!host) return
+    const root = rootRef.current
+    if (!root) return undefined
+    let settleTimer
 
-    function measure() {
-      const hostRect = host.getBoundingClientRect()
-      const width = hostRect.width
-      const height = hostRect.height
-      const content = contentRef?.current
-      const zone = content
-        ? (() => {
-            const c = content.getBoundingClientRect()
-            return {
-              left: c.left - hostRect.left - ZONE_MARGIN,
-              top: c.top - hostRect.top - ZONE_MARGIN,
-              right: c.right - hostRect.left + ZONE_MARGIN,
-              bottom: c.bottom - hostRect.top + ZONE_MARGIN,
-            }
-          })()
-        : null
-      // Round to the nearest 20px so a 1px resize jiggle during a window
-      // drag doesn't reshuffle every icon's position.
-      const round = (v) => Math.round(v / 20) * 20
-      setLayout((prev) => {
-        const next = {
-          width: round(width),
-          height: round(height),
-          zone: zone && {
-            left: round(zone.left),
-            top: round(zone.top),
-            right: round(zone.right),
-            bottom: round(zone.bottom),
-          },
-        }
-        if (
-          prev &&
-          prev.width === next.width &&
-          prev.height === next.height &&
-          JSON.stringify(prev.zone) === JSON.stringify(next.zone)
-        ) {
-          return prev
-        }
-        return next
+    // Measures the layer and every zone as they are right now, so a
+    // delayed relayout never works from sizes that have since changed. That
+    // also covers any relayout still waiting on the timer, so it's dropped.
+    function relayout() {
+      clearTimeout(settleTimer)
+      const box = root.getBoundingClientRect()
+      const width = Math.round(box.width)
+      const height = Math.round(box.height)
+      if (width <= 0 || height <= 0) return
+      const avoid = measureZones(zones, box)
+      const spacing = iconSpacing(window.screen.width, window.screen.height)
+      const previous = layoutRef.current
+      if (
+        previous &&
+        previous.width === width &&
+        previous.height === height &&
+        previous.spacing === spacing &&
+        sameZones(previous.avoid, avoid)
+      ) {
+        return
+      }
+      const next = layoutDecor({
+        width,
+        height,
+        spacing,
+        avoid,
+        previous,
+        kindCount: ICONS.length,
+        colorCount: COLOR_COUNT,
       })
+      layoutRef.current = next
+      setLayout(next)
     }
 
-    measure()
-    const observer = new ResizeObserver(measure)
-    observer.observe(host)
-    // Also watch the content itself: a web font finishing its swap can
-    // reflow the subtitle pill to a different size without the host
-    // resizing at all, which would otherwise leave the exclusion zone
-    // stale (and icons already placed inside it).
-    const content = contentRef?.current
-    if (content) observer.observe(content)
-    return () => observer.disconnect()
-  }, [hostRef, contentRef])
+    // A change in the layer's own size waits for the resize to pause. Any
+    // other change (registered content moving or resizing) relays out at
+    // once, so icons never paint over content in its new spot.
+    function measure() {
+      const box = root.getBoundingClientRect()
+      const applied = layoutRef.current
+      if (applied && (Math.round(box.width) !== applied.width || Math.round(box.height) !== applied.height)) {
+        clearTimeout(settleTimer)
+        settleTimer = setTimeout(relayout, RESIZE_SETTLE_MS)
+      } else {
+        relayout()
+      }
+    }
 
-  const icons = useMemo(() => {
-    if (!layout || layout.width <= 0 || layout.height <= 0) return []
-    return buildPositions(MIN_ICON_DIST, layout.zone, layout.width, layout.height, 7, 120).map((pos, i) => ({
-      key: i,
-      svg: iconFor(i),
-      size: iconSize(i),
-      ...pos,
-    }))
-  }, [layout])
+    // Straight away rather than through measure(): this is either the first
+    // layout or registered content changing (which re-runs this effect), and
+    // that content must be avoided before the next paint even mid-resize.
+    relayout()
+    const observer = new ResizeObserver(measure)
+    observer.observe(root)
+    // Content can change size without the viewport changing (a web font
+    // swapping in, an error message appearing), which moves its zone.
+    for (const { ref } of zones) {
+      if (ref.current) observer.observe(ref.current)
+    }
+    return () => {
+      observer.disconnect()
+      clearTimeout(settleTimer)
+    }
+  }, [zones])
 
   return (
     <div className="decor-background" aria-hidden="true" ref={rootRef}>
-      {icons.map((icon) => (
-        <DecorIcon key={icon.key} svg={icon.svg} x={icon.x} y={icon.y} size={icon.size} />
+      {layout?.icons.map((icon) => (
+        <span
+          key={icon.id}
+          className={`decor-icon decor-icon--color-${icon.color}`}
+          style={{
+            // Offsets from the layer's center, where the engine anchors the
+            // pattern on resize: a resize changes none of them (so nothing
+            // glides), and CSS keeps icons centered until the relayout runs.
+            '--icon-x': `${(icon.x - layout.width / 2).toFixed(1)}px`,
+            '--icon-y': `${(icon.y - layout.height / 2).toFixed(1)}px`,
+            '--icon-size': `${icon.size.toFixed(1)}px`,
+            '--icon-rotate': `${icon.rotation.toFixed(1)}deg`,
+            '--float-duration': `${icon.duration.toFixed(2)}s`,
+            '--float-delay': `${icon.delay.toFixed(2)}s`,
+          }}
+          dangerouslySetInnerHTML={{ __html: ICONS[icon.kind] }}
+        />
       ))}
     </div>
   )

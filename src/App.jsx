@@ -1,8 +1,9 @@
+import { useRef } from 'react'
 import './App.css'
 import { Admin } from './components/Admin'
 import { ArchivedCollections } from './components/ArchivedCollections'
 import { CollectionView } from './components/CollectionView'
-import { DecorBackground } from './components/DecorBackground'
+import { DecorBackground, DecorProvider, useDecorAvoid } from './components/DecorBackground'
 import { Header } from './components/Header'
 import { Home } from './components/Home'
 import { Logo } from './components/Logo'
@@ -12,16 +13,26 @@ import { useAuth } from './hooks/useAuth'
 import { useRoute } from './hooks/useRoute'
 import { signOutUser } from './services/auth'
 
-function App() {
+// Its own component so the avoid-zone registration unmounts with the splash and icons fill in.
+function LoadingSplash() {
+  const logoRef = useRef(null)
+  useDecorAvoid(logoRef, 'rect')
+
+  return (
+    <div className="app-shell app-shell--loading">
+      <div className="app-shell-loading-logo-frame" ref={logoRef}>
+        <Logo className="app-shell-loading-logo" width="80" height="80" />
+      </div>
+    </div>
+  )
+}
+
+function AppScreens() {
   const { user, initializing } = useAuth()
   const [route, navigate] = useRoute()
 
   if (initializing) {
-    return (
-      <div className="app-shell app-shell--loading">
-        <Logo className="app-shell-loading-logo" width="80" height="80" />
-      </div>
-    )
+    return <LoadingSplash />
   }
 
   if (!user) {
@@ -86,8 +97,6 @@ function App() {
     )
   }
 
-  const showHome = !showAdmin && !showCollectionView && !showArchived
-
   return (
     <div className="app-shell">
       <Header
@@ -99,11 +108,20 @@ function App() {
         }
       />
       <OfflineBanner />
-      <div className={`app-content${showHome ? ' decor-host' : ''}`}>
-        {showHome && <DecorBackground />}
+      <div className="app-content">
         <main className="app-main">{content}</main>
       </div>
     </div>
+  )
+}
+
+// One DecorBackground for the whole app keeps its icons put across the splash, sign-in and every route.
+function App() {
+  return (
+    <DecorProvider>
+      <DecorBackground />
+      <AppScreens />
+    </DecorProvider>
   )
 }
 

@@ -8,8 +8,13 @@
   position: sticky;
   top: var(--app-header-height);
   z-index: 5;
-  padding-bottom: 0.25rem;
-  background-color: var(--color-bg);
+  /* The negative margin cancels .app-main's top padding so the bar's natural position is its stuck one:
+     flush under the header from scroll 0, with no gap to scroll through before it sticks. The extra
+     1rem of top padding keeps the content where it was, and the bottom padding leaves room for the
+     panel's fade (see .sticky-panel). */
+  margin-top: -1rem;
+  padding-top: 1rem;
+  padding-bottom: 0.75rem;
 }
 
 .collection-view-header {

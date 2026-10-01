@@ -347,7 +347,7 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
 
   return (
     <div className="admin-screen">
-      <div className="admin-title-row">
+      <div className="admin-title-row sticky-panel">
         <h2 className="admin-title">{isEditMode ? 'Edit collection' : 'New collection'}</h2>
         <div className="admin-title-actions" ref={setActionsSlot} />
       </div>

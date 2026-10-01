@@ -42,11 +42,46 @@
   padding: 1rem;
 }
 
+/* Sticky bars sit on the decor wallpaper, so a hard-edged box would chop through icons at its sides. The panel is
+   painted by a pseudo-element that reaches 1rem past each side (into .app-main's gutter) and is masked to fade
+   out there and along the bar's own bottom padding: icons slide softly under it, and content scrolling up fades
+   out beneath it instead of stopping at a hard line. It paints the wallpaper's own gradient, so it only hides
+   the icons and content beneath it and shows the same colors as the background around it. Masking the
+   pseudo-element rather than the bar keeps the bar's own text and buttons fully opaque. */
+.sticky-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0 -1rem;
+  z-index: -1;
+  background-image: var(--decor-gradient);
+  background-repeat: no-repeat;
+  /* Sized and placed like the wallpaper layer (100vw x 100vh from the viewport's top-left), so the panel shows the
+     same colors as the background behind it. The panel is centered in the viewport (as .app-main is) and always
+     sits right under the header, so centering horizontally and pulling up by the header height lines it up. This
+     avoids background-attachment: fixed, which iOS Safari ignores. */
+  background-size: 100vw 100vh;
+  background-position: center calc(-1 * var(--app-header-height));
+  pointer-events: none;
+  --sticky-panel-fade: 0.75rem;
+  -webkit-mask-image:
+    linear-gradient(to right, transparent, #000 1rem, #000 calc(100% - 1rem), transparent),
+    linear-gradient(to bottom, #000 calc(100% - var(--sticky-panel-fade)), transparent);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent, #000 1rem, #000 calc(100% - 1rem), transparent),
+    linear-gradient(to bottom, #000 calc(100% - var(--sticky-panel-fade)), transparent);
+  mask-composite: intersect;
+}
+
 .app-shell--loading {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--color-bg);
+}
+
+/* Flex so the frame measures exactly the visible logo, without an inline-image baseline gap. */
+.app-shell-loading-logo-frame {
+  display: flex;
 }
 
 .app-shell-loading-logo {

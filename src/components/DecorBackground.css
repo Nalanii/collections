@@ -1,85 +1,90 @@
-.decor-host {
-  position: relative;
-  overflow: hidden;
-  background: radial-gradient(circle at 50% 0%, var(--color-surface), var(--color-bg) 70%);
-}
-
+/* A fixed wallpaper behind the whole app: pages scroll over it, and z-index
+   -1 puts it under all in-flow content, so no screen has to opt in or leave
+   its own background transparent beyond simply not painting one. */
 .decor-background {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  /* vw/vh rather than 100%: the size then ignores a scrollbar appearing
+     between pages and mobile toolbars collapsing on scroll, either of which
+     would otherwise count as a resize and relayout the icons. */
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  overflow: hidden;
   pointer-events: none;
+  background: var(--decor-gradient);
 }
 
 .decor-icon {
   position: absolute;
-  transform: translate(-50%, -50%);
-  animation: decor-float 7s ease-in-out infinite;
+  /* --icon-x/--icon-y are offsets from the layer's center, where the layout
+     anchors the pattern on resize, so resizing never changes them. */
+  left: calc(50% + var(--icon-x));
+  top: calc(50% + var(--icon-y));
+  width: var(--icon-size);
+  height: var(--icon-size);
+  /* Centered on its point without using transform, which the float animation owns. */
+  margin: calc(var(--icon-size) / -2) 0 0 calc(var(--icon-size) / -2);
+  transform: rotate(var(--icon-rotate));
+  /* Icons that settle (away from newly appeared content, or near the edges
+     after a resize) glide rather than jump. Center-relative positioning is
+     why a resize by itself never triggers this, so a phone rotation doesn't
+     slide every icon across the screen. */
+  transition:
+    left 0.6s ease,
+    top 0.6s ease;
+  animation:
+    decor-appear 0.8s ease-out both,
+    decor-float var(--float-duration) ease-in-out var(--float-delay) infinite;
 }
 
 .decor-icon svg {
   display: block;
-  width: var(--icon-size, 40px);
-  height: var(--icon-size, 40px);
+  width: 100%;
+  height: 100%;
 }
 
-.decor-icon:nth-child(4n) {
+.decor-icon--color-0 {
   color: var(--color-accent-purple);
   opacity: 0.26;
 }
 
-.decor-icon:nth-child(4n + 1) {
+.decor-icon--color-1 {
   color: var(--color-primary);
   opacity: 0.24;
 }
 
-.decor-icon:nth-child(4n + 2) {
+.decor-icon--color-2 {
   color: var(--color-deep-purple);
   opacity: 0.25;
 }
 
-.decor-icon:nth-child(4n + 3) {
+.decor-icon--color-3 {
   color: var(--color-accent-green);
   opacity: 0.23;
-}
-
-.decor-icon:nth-child(5n) {
-  animation-duration: 6s;
-  animation-delay: 0.2s;
-}
-
-.decor-icon:nth-child(5n + 1) {
-  animation-duration: 7.5s;
-  animation-delay: 0.8s;
-}
-
-.decor-icon:nth-child(5n + 2) {
-  animation-duration: 8.4s;
-  animation-delay: 1.4s;
-}
-
-.decor-icon:nth-child(5n + 3) {
-  animation-duration: 6.8s;
-  animation-delay: 0.5s;
-}
-
-.decor-icon:nth-child(5n + 4) {
-  animation-duration: 9s;
-  animation-delay: 1.1s;
 }
 
 @keyframes decor-float {
   0%,
   100% {
-    transform: translate(-50%, -50%) rotate(0deg);
+    transform: translateY(0) rotate(var(--icon-rotate));
   }
   50% {
-    transform: translate(-50%, calc(-50% - 14px)) rotate(6deg);
+    transform: translateY(-12px) rotate(calc(var(--icon-rotate) + 6deg));
+  }
+}
+
+/* No `to` frame: fades up to whatever opacity the color class sets. */
+@keyframes decor-appear {
+  from {
+    opacity: 0;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .decor-icon {
     animation: none;
+    transition: none;
   }
 }

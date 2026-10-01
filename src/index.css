@@ -20,6 +20,10 @@
   --color-border: #e8e4da;
   --color-shade: #000000;
   --shadow-rgb: 30 34 41;
+  /* One definition of the wallpaper gradient, shared by .decor-background and the sticky panels (.sticky-panel),
+     so the panels blend into the wallpaper instead of covering it with a flat color. Declared on :root, its
+     var()s resolve against :root's final theme values, so it follows light/dark and the data-theme overrides. */
+  --decor-gradient: radial-gradient(circle at 50% 0%, var(--color-surface), var(--color-bg) 70%);
   --hover-tint: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
   --hover-tint-ghost: color-mix(in srgb, var(--color-primary) 12%, transparent);
   --hover-border: var(--color-primary);
@@ -84,8 +88,12 @@ body {
   padding: 0;
 }
 
-body {
+/* The page color lives on html so it paints beneath the fixed decor wallpaper; on body, Chrome paints it over the z-index -1 layer. */
+html {
   background-color: var(--color-bg);
+}
+
+body {
   color: var(--color-text);
   font-family: var(--font-family-base);
   -webkit-font-smoothing: antialiased;

@@ -651,7 +651,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
 
   return (
     <div className="collection-view-screen">
-      <div className="collection-view-sticky">
+      <div className="collection-view-sticky sticky-panel">
       <div className="collection-view-header">
         {collectionData.emoji && (
           <span className="collection-view-emoji">{collectionData.emoji}</span>

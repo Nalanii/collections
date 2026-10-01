@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { signInWithGoogle, signInWithSimpleLogin } from '../services/auth'
 import simpleLoginLogo from '../assets/simple-login-logo.svg'
 import { Logo } from './Logo.jsx'
-import { DecorBackground } from './DecorBackground'
+import { useDecorAvoid } from './DecorBackground'
 import { Header } from './Header'
 import './SignIn.css'
 
@@ -32,8 +32,12 @@ function GoogleIcon() {
 export function SignIn() {
   const [error, setError] = useState(null)
   const [signingIn, setSigningIn] = useState(false)
-  const hostRef = useRef(null)
-  const contentRef = useRef(null)
+  const heroRef = useRef(null)
+  const actionsRef = useRef(null)
+
+  // The hero is a circle, so it gets an ellipse zone instead of a box that would clear corner space it doesn't use.
+  useDecorAvoid(heroRef, 'ellipse')
+  useDecorAvoid(actionsRef, 'rect')
 
   async function handleSignIn(signIn = signInWithGoogle) {
     setError(null)
@@ -51,38 +55,41 @@ export function SignIn() {
   return (
     <>
       <Header />
-      <div className="sign-in-screen decor-host" ref={hostRef}>
-        <div className="sign-in-content" ref={contentRef}>
-          <Logo className="sign-in-hero" width="512" height="512" />
-          <p className="sign-in-subtitle">
-            Track what you have and what you're hunting for
-          </p>
-          <button
-            type="button"
-            className="sign-in-cta"
-            onClick={() => handleSignIn()}
-            disabled={signingIn}
-          >
-            <GoogleIcon />
-            {signingIn ? 'Signing in…' : 'Sign in with Google'}
-          </button>
-          <button
-            type="button"
-            className="sign-in-cta"
-            onClick={() => handleSignIn(signInWithSimpleLogin)}
-            disabled={signingIn}
-          >
-            <img
-              className="sign-in-provider-icon"
-              src={simpleLoginLogo}
-              alt=""
-              aria-hidden="true"
-            />
-            {signingIn ? 'Signing in…' : 'Sign in with SimpleLogin'}
-          </button>
-          {error && <p className="sign-in-error">{error}</p>}
+      <div className="sign-in-screen">
+        <div className="sign-in-content">
+          <div className="sign-in-hero-frame" ref={heroRef}>
+            <Logo className="sign-in-hero" width="512" height="512" />
+          </div>
+          <div className="sign-in-actions" ref={actionsRef}>
+            <p className="sign-in-subtitle">
+              Track what you have and what you're hunting for
+            </p>
+            <button
+              type="button"
+              className="sign-in-cta"
+              onClick={() => handleSignIn()}
+              disabled={signingIn}
+            >
+              <GoogleIcon />
+              {signingIn ? 'Signing in…' : 'Sign in with Google'}
+            </button>
+            <button
+              type="button"
+              className="sign-in-cta"
+              onClick={() => handleSignIn(signInWithSimpleLogin)}
+              disabled={signingIn}
+            >
+              <img
+                className="sign-in-provider-icon"
+                src={simpleLoginLogo}
+                alt=""
+                aria-hidden="true"
+              />
+              {signingIn ? 'Signing in…' : 'Sign in with SimpleLogin'}
+            </button>
+            {error && <p className="sign-in-error">{error}</p>}
+          </div>
         </div>
-        <DecorBackground hostRef={hostRef} contentRef={contentRef} />
       </div>
     </>
   )
