@@ -1,4 +1,5 @@
 import { initializeApp } from 'firebase/app'
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check'
 import { getAuth } from 'firebase/auth'
 import {
   disableNetwork,
@@ -18,6 +19,20 @@ const firebaseConfig = {
 }
 
 export const app = initializeApp(firebaseConfig)
+
+// App Check proves requests come from this app (invisible reCAPTCHA Enterprise, no
+// challenge). It's skipped when no site key is configured, e.g. in unit tests and the
+// emulator. In dev, the SDK prints a debug token to the console; register it under
+// Firebase console > App Check > Manage debug tokens so localhost is verified.
+const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY
+if (recaptchaSiteKey) {
+  if (import.meta.env.DEV) self.FIREBASE_APPCHECK_DEBUG_TOKEN = true
+  initializeAppCheck(app, {
+    provider: new ReCaptchaEnterpriseProvider(recaptchaSiteKey),
+    isTokenAutoRefreshEnabled: true,
+  })
+}
+
 export const auth = getAuth(app)
 // Persistent cache keeps previously loaded collections/items readable offline and
 // queues writes until connectivity returns.
