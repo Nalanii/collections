@@ -419,6 +419,7 @@ export function Admin({ user, collectionId, onDone, onCancel = onDone, onSaved =
           onCancel={guardedCancel}
           onDirtyChange={setFormDirty}
           submitLabel={isEditMode ? 'Save changes' : 'Create collection'}
+          submittingLabel={isEditMode ? 'Saving…' : 'Creating…'}
           submitting={submitting}
           actionsContainer={actionsSlot}
         />

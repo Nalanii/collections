@@ -33,6 +33,49 @@ function withRowKeys(fieldDefs) {
   }))
 }
 
+function MoveUpIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+      <path
+        d="M3.5 10l4.5-4.5 4.5 4.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function MoveDownIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+      <path
+        d="M3.5 6l4.5 4.5L12.5 6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function RemoveIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+      <path
+        d="M3.5 3.5l9 9m0-9l-9 9"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
 function normalizeForDirtyCheck(name, emoji, fieldDefs) {
   return JSON.stringify({
     name: name ?? '',
@@ -46,6 +89,7 @@ export function CollectionForm({
   onSubmit,
   onCancel,
   submitLabel,
+  submittingLabel,
   submitting = false,
   actionsContainer = null,
   onDirtyChange,
@@ -58,7 +102,6 @@ export function CollectionForm({
   const [primaryTouched, setPrimaryTouched] = useState(false)
   const lastAddedKeyRef = useRef(null)
   const pendingMoveFocusRef = useRef(null)
-  const pendingFieldMoveFocusRef = useRef(null)
   const formRef = useRef(null)
   const formId = useId()
 
@@ -69,8 +112,8 @@ export function CollectionForm({
     onDirtyChange?.(isDirty)
   }, [isDirty, onDirtyChange])
 
-  // After a reorder, keep focus on the moved option's button (or the other
-  // one if the moved option reached an end and that button is now disabled).
+  // After a reordered option or field row, keep focus on the moved row's button
+  // (or the other one if the row reached an end and that button is now disabled).
   useEffect(() => {
     const pending = pendingMoveFocusRef.current
     if (!pending) {
@@ -78,26 +121,7 @@ export function CollectionForm({
     }
     pendingMoveFocusRef.current = null
     const find = (dir) =>
-      formRef.current?.querySelector(
-        `[data-option-key="${pending.optionKey}"][data-move="${dir}"]`
-      )
-    const preferred = find(pending.direction)
-    const fallback = find(pending.direction === 'up' ? 'down' : 'up')
-    const target = preferred && !preferred.disabled ? preferred : fallback
-    target?.focus()
-  }, [fieldDefs])
-
-  // Same for a reordered field row.
-  useEffect(() => {
-    const pending = pendingFieldMoveFocusRef.current
-    if (!pending) {
-      return
-    }
-    pendingFieldMoveFocusRef.current = null
-    const find = (dir) =>
-      formRef.current?.querySelector(
-        `[data-field-key="${pending.fieldKey}"][data-move="${dir}"]`
-      )
+      formRef.current?.querySelector(`[${pending.attr}="${pending.key}"][data-move="${dir}"]`)
     const preferred = find(pending.direction)
     const fallback = find(pending.direction === 'up' ? 'down' : 'up')
     const target = preferred && !preferred.disabled ? preferred : fallback
@@ -131,31 +155,7 @@ export function CollectionForm({
     !hasDuplicateFieldNames &&
     !hasInvalidOptions
 
-  function handleFieldNameChange(key, value) {
-    setFieldDefs((rows) =>
-      rows.map((row) => (row._key === key ? { ...row, name: value } : row))
-    )
-  }
-
-  function handleFieldTypeChange(key, value) {
-    setFieldDefs((rows) =>
-      rows.map((row) => (row._key === key ? { ...row, type: value } : row))
-    )
-  }
-
-  function handleFieldMainChange(key, checked) {
-    setFieldDefs((rows) =>
-      rows.map((row) => (row._key === key ? { ...row, main: checked } : row))
-    )
-  }
-
-  function handleFieldExcludeChange(key, checked) {
-    setFieldDefs((rows) =>
-      rows.map((row) => (row._key === key ? { ...row, excludeFromSearch: checked } : row))
-    )
-  }
-
-  function handleFieldTextChange(key, prop, value) {
+  function updateRow(key, prop, value) {
     setFieldDefs((rows) =>
       rows.map((row) => (row._key === key ? { ...row, [prop]: value } : row))
     )
@@ -196,7 +196,7 @@ export function CollectionForm({
   }
 
   function handleMoveOption(key, index, direction, optionKey) {
-    pendingMoveFocusRef.current = { optionKey, direction }
+    pendingMoveFocusRef.current = { attr: 'data-option-key', key: optionKey, direction }
     updateOptions(
       key,
       (options) => moveOption(options, index, direction),
@@ -222,7 +222,7 @@ export function CollectionForm({
   }
 
   function handleMoveField(key, direction) {
-    pendingFieldMoveFocusRef.current = { fieldKey: key, direction }
+    pendingMoveFocusRef.current = { attr: 'data-field-key', key, direction }
     setFieldDefs((rows) =>
       moveOption(rows, rows.findIndex((row) => row._key === key), direction)
     )
@@ -280,8 +280,6 @@ export function CollectionForm({
         ),
     })
   }
-
-  const submittingLabel = submitLabel.toLowerCase().includes('create') ? 'Creating…' : 'Saving…'
 
   const showNameError = nameTouched && trimmedName === ''
   const showPrimaryError = primaryTouched && !hasPrimaryField
@@ -361,7 +359,7 @@ export function CollectionForm({
                   type="text"
                   className="collection-form-input field-def-name-input"
                   value={row.name}
-                  onChange={(event) => handleFieldNameChange(row._key, event.target.value)}
+                  onChange={(event) => updateRow(row._key, 'name', event.target.value)}
                   onBlur={() => setFieldsTouched(true)}
                   placeholder="Field name"
                   aria-label="Field name"
@@ -376,7 +374,7 @@ export function CollectionForm({
                   className="field-def-type-select"
                   options={FIELD_TYPES}
                   value={row.type}
-                  onChange={(newValue) => handleFieldTypeChange(row._key, newValue)}
+                  onChange={(newValue) => updateRow(row._key, 'type', newValue)}
                   ariaLabel="Field type"
                 />
                 <button
@@ -388,16 +386,7 @@ export function CollectionForm({
                   onClick={() => handleMoveField(row._key, 'up')}
                   aria-label={`Move field ${rowIndex + 1} up`}
                 >
-                  <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-                    <path
-                      d="M3.5 10l4.5-4.5 4.5 4.5"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.75"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+                  <MoveUpIcon />
                 </button>
                 <button
                   type="button"
@@ -408,16 +397,7 @@ export function CollectionForm({
                   onClick={() => handleMoveField(row._key, 'down')}
                   aria-label={`Move field ${rowIndex + 1} down`}
                 >
-                  <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-                    <path
-                      d="M3.5 6l4.5 4.5L12.5 6"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.75"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+                  <MoveDownIcon />
                 </button>
                 <button
                   type="button"
@@ -425,14 +405,7 @@ export function CollectionForm({
                   onClick={() => handleRemoveField(row._key)}
                   aria-label="Remove field"
                 >
-                  <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-                    <path
-                      d="M3.5 3.5l9 9m0-9l-9 9"
-                      stroke="currentColor"
-                      strokeWidth="1.75"
-                      strokeLinecap="round"
-                    />
-                  </svg>
+                  <RemoveIcon />
                 </button>
               </div>
               <label className="field-def-main-label">
@@ -441,7 +414,7 @@ export function CollectionForm({
                   data-primary-checkbox
                   checked={Boolean(row.main)}
                   disabled={!row.main && mainCount >= MAX_MAIN_FIELDS}
-                  onChange={(event) => handleFieldMainChange(row._key, event.target.checked)}
+                  onChange={(event) => updateRow(row._key, 'main', event.target.checked)}
                 />
                 Primary field (max {MAX_MAIN_FIELDS})
               </label>
@@ -450,7 +423,7 @@ export function CollectionForm({
                   type="checkbox"
                   checked={Boolean(row.excludeFromSearch)}
                   disabled={!row.excludeFromSearch && searchableCount <= 1}
-                  onChange={(event) => handleFieldExcludeChange(row._key, event.target.checked)}
+                  onChange={(event) => updateRow(row._key, 'excludeFromSearch', event.target.checked)}
                 />
                 Exclude from search
               </label>
@@ -460,7 +433,7 @@ export function CollectionForm({
                     type="checkbox"
                     checked={Boolean(row.suggestOptions)}
                     onChange={(event) =>
-                      handleFieldTextChange(row._key, 'suggestOptions', event.target.checked)
+                      updateRow(row._key, 'suggestOptions', event.target.checked)
                     }
                   />
                   Suggest options
@@ -471,7 +444,7 @@ export function CollectionForm({
                   type="text"
                   className="collection-form-input"
                   value={row.prefix ?? ''}
-                  onChange={(event) => handleFieldTextChange(row._key, 'prefix', event.target.value)}
+                  onChange={(event) => updateRow(row._key, 'prefix', event.target.value)}
                   placeholder="Prefix, e.g. Read: "
                   aria-label="Prefix"
                 />
@@ -479,7 +452,7 @@ export function CollectionForm({
                   type="text"
                   className="collection-form-input"
                   value={row.suffix ?? ''}
-                  onChange={(event) => handleFieldTextChange(row._key, 'suffix', event.target.value)}
+                  onChange={(event) => updateRow(row._key, 'suffix', event.target.value)}
                   placeholder="Suffix, e.g.  pages"
                   aria-label="Suffix"
                 />
@@ -513,16 +486,7 @@ export function CollectionForm({
                         onClick={() => handleMoveOption(row._key, index, 'up', optionKey)}
                         aria-label={`Move option ${index + 1} of ${fieldLabel} up`}
                       >
-                        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-                          <path
-                            d="M3.5 10l4.5-4.5 4.5 4.5"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.75"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
+                        <MoveUpIcon />
                       </button>
                       <button
                         type="button"
@@ -533,16 +497,7 @@ export function CollectionForm({
                         onClick={() => handleMoveOption(row._key, index, 'down', optionKey)}
                         aria-label={`Move option ${index + 1} of ${fieldLabel} down`}
                       >
-                        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-                          <path
-                            d="M3.5 6l4.5 4.5L12.5 6"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.75"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
+                        <MoveDownIcon />
                       </button>
                       <button
                         type="button"
@@ -550,14 +505,7 @@ export function CollectionForm({
                         onClick={() => handleRemoveOption(row._key, index)}
                         aria-label={`Remove option ${index + 1} of ${fieldLabel}`}
                       >
-                        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-                          <path
-                            d="M3.5 3.5l9 9m0-9l-9 9"
-                            stroke="currentColor"
-                            strokeWidth="1.75"
-                            strokeLinecap="round"
-                          />
-                        </svg>
+                        <RemoveIcon />
                       </button>
                     </div>
                     )
