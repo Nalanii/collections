@@ -21,7 +21,7 @@ export function suggestFieldValues(items, fieldName, query) {
 
   const seen = new Set()
   const values = []
-  for (const item of items) {
+  for (const item of items ?? []) {
     const raw = item.fields?.[fieldName]
     if (raw == null) {
       continue

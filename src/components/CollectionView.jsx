@@ -769,7 +769,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
               ) : fieldDef.type === 'text' && fieldDef.suggestOptions ? (
                 <SuggestInput
                   id={`add-field-${index}`}
-                  items={items}
+                  items={items ?? []}
                   fieldName={fieldDef.name}
                   value={form.fields[fieldDef.name] ?? ''}
                   onChange={(newValue) => handleFieldChange(fieldDef.name, newValue)}

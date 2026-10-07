@@ -12,6 +12,11 @@ describe('suggestFieldValues', () => {
     expect(suggestFieldValues(items, 'Author', '   ')).toEqual([])
   })
 
+  it('returns [] without throwing when items are not loaded yet', () => {
+    expect(suggestFieldValues(null, 'Author', 'to')).toEqual([])
+    expect(suggestFieldValues(undefined, 'Author', 'to')).toEqual([])
+  })
+
   it('matches case-insensitively', () => {
     expect(suggestFieldValues(items, 'Author', 'TOLK')).toEqual(['J.R.R. Tolkien'])
   })
