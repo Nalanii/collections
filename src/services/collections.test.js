@@ -36,6 +36,7 @@ import {
   onSnapshot,
   query,
   updateDoc,
+  where,
   writeBatch,
 } from 'firebase/firestore'
 import {
@@ -173,6 +174,43 @@ describe('updateCollection conflict handling', () => {
         },
         { path: 'items/a', update: { 'fields.Format': 'Vinyl LP', updatedAt: 'SERVER_TIMESTAMP' } },
       ])
+    })
+
+    it('queries only items holding renamed values, in chunks of 30 per field, merged by id', async () => {
+      const commits = mockStore({
+        'collections/col1': ORIGINAL,
+        'items/a': { collectionId: 'col1', fields: { Format: 'v0', 'Co.de': 'x' } },
+        'items/b': { collectionId: 'col1', fields: { Format: 'CD' } },
+      })
+      where.mockClear()
+      const renames = Array.from({ length: 65 }, (_, i) => ({
+        fieldName: 'Format',
+        from: `v${i}`,
+        to: `w${i}`,
+      }))
+      renames.push({ fieldName: 'Co.de', from: 'x', to: 'y' })
+      await updateCollection('col1', {
+        ...ORIGINAL,
+        fieldDefs: renamedFieldDefs,
+        optionRenames: renames,
+        original: ORIGINAL,
+      })
+      const inCalls = where.mock.calls.filter(([, op]) => op === 'in')
+      expect(inCalls.map(([path, , values]) => [path.segments, values.length])).toEqual([
+        [['fields', 'Format'], 30],
+        [['fields', 'Format'], 30],
+        [['fields', 'Format'], 5],
+        [['fields', 'Co.de'], 1],
+      ])
+      expect(where.mock.calls.filter(([field, op]) => field === 'collectionId' && op === '==')).toHaveLength(4)
+      // Every query returned both items, but item a is rewritten once.
+      expect(commits[0].filter(({ path }) => path === 'items/a')).toEqual([
+        {
+          path: 'items/a',
+          update: { 'fields.Format': 'w0', 'fields.Co.de': 'y', updatedAt: 'SERVER_TIMESTAMP' },
+        },
+      ])
+      expect(commits[0].some(({ path }) => path === 'items/b')).toBe(false)
     })
 
     it('does not overwrite an item edited after the rename began', async () => {

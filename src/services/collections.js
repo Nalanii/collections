@@ -119,6 +119,38 @@ function optionRenameChanges(itemFields, optionRenames) {
   return changes
 }
 
+// Firestore's `in` operator accepts at most 30 values.
+const MAX_IN_VALUES = 30
+
+// Reads only the items of the collection whose value for a renamed field is one of
+// that field's old option values (renames match with `===`, so an exact `in` query
+// is equivalent), instead of every item. Each (field, 30 old values) pair is one
+// query; results are merged by doc id so an item matching several is returned once.
+// Needs only the single-field indexes on `collectionId` and `fields.<name>`.
+async function findItemsHoldingRenamedValues(collectionId, optionRenames) {
+  const fromValuesByField = new Map()
+  optionRenames.forEach(({ fieldName, from }) => {
+    const values = fromValuesByField.get(fieldName) ?? new Set()
+    values.add(from)
+    fromValuesByField.set(fieldName, values)
+  })
+  const queries = [...fromValuesByField].flatMap(([fieldName, values]) =>
+    chunk([...values], MAX_IN_VALUES).map((fromValues) =>
+      getDocs(
+        query(
+          collection(db, 'items'),
+          where('collectionId', '==', collectionId),
+          where(new FieldPath('fields', fieldName), 'in', fromValues)
+        )
+      )
+    )
+  )
+  const snaps = await Promise.all(queries)
+  const itemsById = new Map()
+  snaps.forEach((snap) => snap.docs.forEach((itemSnap) => itemsById.set(itemSnap.id, itemSnap)))
+  return [...itemsById.values()]
+}
+
 // Rewrites one item read inside `transaction`. The rename is recomputed from the
 // transaction's fresh read (not the earlier query), and the transaction fails and
 // retries if the item changes before commit, so an item edited after the rename
@@ -187,10 +219,7 @@ export async function updateCollection(
 
   // Client transactions can't run queries, so find the affected items first and
   // re-read each one inside the transaction that rewrites it.
-  const itemsSnap = await getDocs(
-    query(collection(db, 'items'), where('collectionId', '==', collectionId))
-  )
-  const renamedItemRefs = itemsSnap.docs
+  const renamedItemRefs = (await findItemsHoldingRenamedValues(collectionId, optionRenames))
     .filter((itemSnap) => optionRenameChanges(itemSnap.data().fields, optionRenames).length > 0)
     .map((itemSnap) => itemSnap.ref)
 
