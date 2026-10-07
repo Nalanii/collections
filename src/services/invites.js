@@ -11,9 +11,16 @@ import {
 } from 'firebase/firestore'
 import { db } from './firebase'
 
+// Invites are always stored under a lowercased email (doc ID and `email`
+// field); firestore.rules lowercases the token email to match, so a sign-in
+// email with capital letters still finds its invites.
+function inviteRef(collectionId, email) {
+  return doc(db, 'collections', collectionId, 'invites', email.toLowerCase())
+}
+
 export async function createInvite(inviterUid, collectionId, email, role) {
   const normalizedEmail = email.toLowerCase()
-  await setDoc(doc(db, 'collections', collectionId, 'invites', normalizedEmail), {
+  await setDoc(inviteRef(collectionId, normalizedEmail), {
     email: normalizedEmail,
     role,
     invitedBy: inviterUid,
@@ -31,7 +38,7 @@ export async function createInvite(inviterUid, collectionId, email, role) {
 // a listener error (e.g. `permission-denied`), `invites` is `[]` and `error`
 // is the Firestore error.
 export function subscribeToUserInvites(email, callback) {
-  const invitesQuery = query(collectionGroup(db, 'invites'), where('email', '==', email))
+  const invitesQuery = query(collectionGroup(db, 'invites'), where('email', '==', email.toLowerCase()))
   return onSnapshot(
     invitesQuery,
     async (snapshot) => {
@@ -73,14 +80,17 @@ export async function acceptInvite(user, collectionId, role, email) {
   await setDoc(doc(db, 'collections', collectionId, 'members', user.uid), {
     uid: user.uid,
     role,
-    email,
+    // The member doc keeps the sign-in email as issued (not the lowercased
+    // invite email): firestore.rules compares it to request.auth.token.email
+    // verbatim, matching the owner-bootstrap rule and the profile backfill.
+    email: user.email,
     displayName: user.displayName,
     joinedAt: serverTimestamp(),
   })
 
-  await deleteDoc(doc(db, 'collections', collectionId, 'invites', email))
+  await deleteDoc(inviteRef(collectionId, email))
 }
 
 export function declineInvite(collectionId, email) {
-  return deleteDoc(doc(db, 'collections', collectionId, 'invites', email.toLowerCase()))
+  return deleteDoc(inviteRef(collectionId, email))
 }

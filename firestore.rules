@@ -51,7 +51,7 @@ service cloud.firestore {
       // invites/{email} doc for this collection, mirroring the same
       // exists() check the members/{uid} invite-acceptance rule below uses.
       allow read: if isMember(collectionId) ||
-        (isSignedIn() && exists(/databases/$(database)/documents/collections/$(collectionId)/invites/$(request.auth.token.email)));
+        (isSignedIn() && exists(/databases/$(database)/documents/collections/$(collectionId)/invites/$(request.auth.token.email.lower())));
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       // ownerId only changes in an ownership transfer: the current owner hands
       // the collection to an existing member, in the same batch that makes that
@@ -89,8 +89,8 @@ service cloud.firestore {
          && get(/databases/$(database)/documents/collections/$(collectionId)).data.ownerId == request.auth.uid) ||
         (isSignedIn()
          && request.auth.uid == uid
-         && exists(/databases/$(database)/documents/collections/$(collectionId)/invites/$(request.auth.token.email))
-         && request.resource.data.role == get(/databases/$(database)/documents/collections/$(collectionId)/invites/$(request.auth.token.email)).data.role
+         && exists(/databases/$(database)/documents/collections/$(collectionId)/invites/$(request.auth.token.email.lower()))
+         && request.resource.data.role == get(/databases/$(database)/documents/collections/$(collectionId)/invites/$(request.auth.token.email.lower())).data.role
          && request.resource.data.role in ['editor', 'viewer']
          && request.resource.data.email == request.auth.token.email);
       // Ownership only changes via the transfer batch (see the collections
@@ -123,9 +123,9 @@ service cloud.firestore {
     }
 
     match /collections/{collectionId}/invites/{email} {
-      allow read: if isOwnerOrEditor(collectionId) || (isSignedIn() && request.auth.token.email == email);
+      allow read: if isOwnerOrEditor(collectionId) || (isSignedIn() && request.auth.token.email.lower() == email);
       allow create, update: if isOwnerOrEditor(collectionId) && request.resource.data.role in ['editor', 'viewer'];
-      allow delete: if isOwnerOrEditor(collectionId) || (isSignedIn() && request.auth.token.email == email);
+      allow delete: if isOwnerOrEditor(collectionId) || (isSignedIn() && request.auth.token.email.lower() == email);
     }
 
     // The nested match above scopes reads/writes to one known collectionId
@@ -137,7 +137,7 @@ service cloud.firestore {
     // by that same user under the nested rule above, using the email match
     // this rule just proved.
     match /{path=**}/invites/{inviteId} {
-      allow read: if isSignedIn() && resource.data.email == request.auth.token.email;
+      allow read: if isSignedIn() && resource.data.email == request.auth.token.email.lower();
     }
 
     match /items/{itemId} {

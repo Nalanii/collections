@@ -969,18 +969,73 @@ describe('collections create validation', () => {
   });
 });
 
-describe('invite email case sensitivity (rules do verbatim string comparison)', () => {
+describe('invite email case insensitivity (token email is lowercased in rules)', () => {
   beforeEach_seed();
 
-  // src/services/invites.js lowercases invite emails at write time (see
-  // commit bc98e00), so invite doc IDs are always lowercase and match
-  // Firebase Auth's lowercase token email. The rules themselves never
-  // normalize case -- request.auth.token.email == email is a verbatim
-  // string comparison against the doc ID. This test documents that current
-  // rules behavior directly: a mixed-case invite doc ID does NOT match a
-  // lowercase token email, proving the case-insensitivity guarantee comes
-  // entirely from the client normalizing at write time, not from the rules.
-  it('a lowercase token email does not match a mixed-case invite doc id', async () => {
+  // Invites are stored under a lowercased email (src/services/invites.js), but
+  // an identity provider (e.g. SimpleLogin OIDC) may issue a mixed-case token
+  // email. The rules lowercase the token email before comparing, so such a
+  // user can still list, read, accept and decline an invite.
+  const MIXED = 'Invited@Example.com';
+
+  function mixedDb() {
+    return testEnv.authenticatedContext('invitee-uid', { email: MIXED }).firestore();
+  }
+
+  it('a mixed-case token email can list its lowercase-stored invites', async () => {
+    const snapshot = await assertSucceeds(
+      mixedDb().collectionGroup('invites').where('email', '==', 'invited@example.com').get()
+    );
+    expect(snapshot.size).toBe(1);
+    expect(snapshot.docs[0].ref.path).toBe('collections/col1/invites/invited@example.com');
+  });
+
+  it('a mixed-case token email can read the invite doc and the invited collection', async () => {
+    const db = mixedDb();
+    await assertSucceeds(
+      db.collection('collections').doc('col1').collection('invites').doc('invited@example.com').get()
+    );
+    await assertSucceeds(db.collection('collections').doc('col1').get());
+  });
+
+  it('a mixed-case token email can accept the invite (member doc keeps the token email)', async () => {
+    await assertSucceeds(
+      mixedDb()
+        .collection('collections')
+        .doc('col1')
+        .collection('members')
+        .doc('invitee-uid')
+        .set({ role: 'editor', email: MIXED })
+    );
+  });
+
+  it('a mixed-case token email cannot accept with a different member email or role', async () => {
+    const members = mixedDb().collection('collections').doc('col1').collection('members');
+    await assertFails(members.doc('invitee-uid').set({ role: 'editor', email: 'other@example.com' }));
+    await assertFails(members.doc('invitee-uid').set({ role: 'viewer', email: MIXED }));
+  });
+
+  it('a mixed-case token email can decline (delete) the invite', async () => {
+    await assertSucceeds(
+      mixedDb().collection('collections').doc('col1').collection('invites').doc('invited@example.com').delete()
+    );
+  });
+
+  it('a different email still cannot list, read, accept or delete the invite', async () => {
+    const db = testEnv
+      .authenticatedContext('other-uid', { email: 'Other@Example.com' })
+      .firestore();
+    const col = db.collection('collections').doc('col1');
+    await assertFails(
+      db.collectionGroup('invites').where('email', '==', 'invited@example.com').get()
+    );
+    await assertFails(col.collection('invites').doc('invited@example.com').get());
+    await assertFails(col.collection('invites').doc('invited@example.com').delete());
+    await assertFails(col.get());
+    await assertFails(col.collection('members').doc('other-uid').set({ role: 'editor', email: 'Other@Example.com' }));
+  });
+
+  it('a mixed-case invite doc id (never written by the client) stays unreachable', async () => {
     await testEnv.withSecurityRulesDisabled(async (context) => {
       await context
         .firestore()
@@ -991,6 +1046,8 @@ describe('invite email case sensitivity (rules do verbatim string comparison)', 
         .set({ role: 'editor', invitedBy: 'owner-uid', email: 'MixedCase@Example.com' });
     });
 
+    // The client never writes such a doc; the rules compare the lowercased
+    // token email to the doc ID verbatim, so a non-lowercase doc ID is unreachable.
     const db = testEnv
       .authenticatedContext('mixedcase-uid', { email: 'mixedcase@example.com' })
       .firestore();
