@@ -320,7 +320,7 @@ src/
 public/            # PWA manifest, service worker, icons
 scripts/           # Admin scripts: import, cleanup, backups
 tests/             # Firestore rules tests and admin script tests
-docs/              # Backup/restore runbook, design specs and plans
+docs/              # Backup/restore runbook and design specs
 .github/workflows/ # CI/CD and scheduled backup workflows
 firestore.rules    # Firestore security rules
 ```
