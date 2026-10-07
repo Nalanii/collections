@@ -28,12 +28,12 @@ export function validateOptions(options) {
 // Builds the { value, label } list for the Select: an empty choice (keeps the
 // field optional), the defined options, and the current value appended when it
 // is not among them.
-export function buildSelectOptions(options, currentValue, emptyLabel = 'None') {
+export function buildSelectOptions(options, currentValue) {
   const list = (options ?? []).map((option) => ({ value: option, label: option }))
   if (currentValue && !list.some((option) => option.value === currentValue)) {
     list.push({ value: currentValue, label: currentValue })
   }
-  return [{ value: '', label: emptyLabel }, ...list]
+  return [{ value: '', label: 'None' }, ...list]
 }
 
 // Compares an option list against the values each row started as and returns

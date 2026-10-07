@@ -171,7 +171,7 @@ export function mapRows(rows, fieldDefs, options = {}) {
     items.push({
       status,
       fields: trimFieldValues(fields),
-      notes: typeof notes === 'string' ? notes.trim() : notes,
+      notes,
     })
   })
 

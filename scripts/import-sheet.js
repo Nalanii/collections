@@ -61,7 +61,6 @@ async function main() {
   const result = mapRows(rows, fieldDefs, { mapUnmatchedToNotes: values['unmatched-to-notes'] })
 
   if (!dryRun) {
-    let created = 0
     for (const group of chunk(result.items)) {
       const batch = db.batch()
       for (const item of group) {
@@ -76,7 +75,6 @@ async function main() {
         })
       }
       await batch.commit()
-      created += group.length
     }
   }
 

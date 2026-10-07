@@ -33,12 +33,8 @@ export function useRoute() {
     return () => window.removeEventListener('popstate', handlePopState)
   }, [])
 
-  const navigate = useCallback((path, { replace = false } = {}) => {
-    if (replace) {
-      window.history.replaceState(null, '', path)
-    } else {
-      window.history.pushState(null, '', path)
-    }
+  const navigate = useCallback((path) => {
+    window.history.pushState(null, '', path)
     setRoute(parsePath(path))
   }, [])
 

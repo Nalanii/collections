@@ -10,30 +10,21 @@ export function getStoredTheme() {
   }
 }
 
-// Applies the choice to <html> and keeps <meta name="theme-color"> in sync.
-// For 'system' the media-specific meta tags from index.html take over again.
+// Applies an explicit 'light' or 'dark' choice to <html> and keeps
+// <meta name="theme-color"> in sync. With no saved choice nothing is applied
+// and the media-specific meta tags from index.html follow the OS.
 export function applyTheme(theme) {
-  const root = document.documentElement
-  if (theme === 'light' || theme === 'dark') {
-    root.setAttribute('data-theme', theme)
-  } else {
-    root.removeAttribute('data-theme')
-  }
+  document.documentElement.setAttribute('data-theme', theme)
 
   document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
-    const media = meta.getAttribute('media') || ''
-    const systemColor = media.includes('dark') ? THEME_COLORS.dark : THEME_COLORS.light
-    meta.setAttribute('content', THEME_COLORS[theme] ?? systemColor)
+    meta.setAttribute('content', THEME_COLORS[theme])
   })
 }
 
+// Persists an explicit 'light' or 'dark' choice.
 export function saveTheme(theme) {
   try {
-    if (theme === 'light' || theme === 'dark') {
-      localStorage.setItem(STORAGE_KEY, theme)
-    } else {
-      localStorage.removeItem(STORAGE_KEY)
-    }
+    localStorage.setItem(STORAGE_KEY, theme)
   } catch {
     // Storage unavailable (private mode, blocked); the choice just won't persist.
   }
