@@ -231,7 +231,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
   const [mode, setMode] = useState('search')
   const [form, setForm] = useState(emptyFormState)
   const [initialForm, setInitialForm] = useState(emptyFormState)
-  const [pendingDiscardAction, setPendingDiscardAction] = useState(null)
+  const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false)
   const [editingItemId, setEditingItemId] = useState(null)
   const [formError, setFormError] = useState(null)
   // Tied to the `form` object it was raised for, so any edit or reset hides it.
@@ -413,21 +413,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
     saveSortField(collectionId, fieldName)
   }
 
-  function isAddFormDirty() {
-    if (mode !== 'add') {
-      return false
-    }
-    if (form.status !== initialForm.status || form.notes !== initialForm.notes) {
-      return true
-    }
-    const fieldNames = new Set([...Object.keys(form.fields), ...Object.keys(initialForm.fields)])
-    for (const fieldName of fieldNames) {
-      if ((form.fields[fieldName] ?? '') !== (initialForm.fields[fieldName] ?? '')) {
-        return true
-      }
-    }
-    return false
-  }
+  const isAddFormDirty = mode === 'add' && itemContentChanged(initialForm, form)
 
   function handleSwitchToAdd() {
     if (mode === 'add') return
@@ -440,19 +426,23 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
     setFocusToken((token) => token + 1)
   }
 
-  function handleSwitchToSearch() {
+  // The one way out of the add/edit form: clears all form state and returns to search.
+  function resetToSearch() {
     setEditingItemId(null)
     setForm(emptyFormState())
     setFormError(null)
+    setConflict(null)
+    setDuplicateWarning(null)
     setMode('search')
   }
 
-  function handleSwitchToSearchTab() {
-    if (isAddFormDirty()) {
-      setPendingDiscardAction('search')
+  // Leaves the form, asking first when it holds unsaved changes.
+  function requestLeaveForm() {
+    if (isAddFormDirty) {
+      setDiscardConfirmOpen(true)
       return
     }
-    handleSwitchToSearch()
+    resetToSearch()
   }
 
   function handleFieldChange(fieldName, value) {
@@ -477,40 +467,13 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
     }
   }
 
-  function handleDiscardDeleted() {
-    setEditingItemId(null)
-    setForm(emptyFormState())
-    setFormError(null)
-    setConflict(null)
-    setMode('search')
-  }
-
-  function handleCancelEdit() {
-    if (isAddFormDirty()) {
-      setPendingDiscardAction('cancelEdit')
-      return
-    }
-    setEditingItemId(null)
-    setForm(emptyFormState())
-    setFormError(null)
-    setMode('search')
-  }
-
   function handleConfirmDiscard() {
-    const action = pendingDiscardAction
-    setPendingDiscardAction(null)
-    if (action === 'search') {
-      handleSwitchToSearch()
-    } else if (action === 'cancelEdit') {
-      setEditingItemId(null)
-      setForm(emptyFormState())
-      setFormError(null)
-      setMode('search')
-    }
+    setDiscardConfirmOpen(false)
+    resetToSearch()
   }
 
   function handleKeepEditing() {
-    setPendingDiscardAction(null)
+    setDiscardConfirmOpen(false)
   }
 
   // `force` overwrites someone else's conflicting change; `asNew` re-adds an item that
@@ -561,18 +524,15 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
           original: form.original,
           force,
         })
-        setEditingItemId(null)
-        setForm(emptyFormState())
-        setMode('search')
+        resetToSearch()
       } else {
         await addItem(user, collectionId, { status: form.status, fields: trimmedFields, notes: trimmedNotes })
         const addedName = summarizeItemFields(fieldDefs, trimmedFields).main
         setToast({ id: Date.now(), message: addedName ? `Added: ${addedName}` : 'Item added' })
-        setForm(emptyFormState())
         if (asNew) {
-          setEditingItemId(null)
-          setMode('search')
+          resetToSearch()
         } else {
+          setForm(emptyFormState())
           setFocusToken((token) => token + 1)
         }
       }
@@ -671,7 +631,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
               type="button"
               aria-pressed={mode === 'search'}
               className={`collection-view-mode-button${mode === 'search' ? ' collection-view-mode-button--active' : ''}`}
-              onClick={handleSwitchToSearchTab}
+              onClick={requestLeaveForm}
             >
               <SearchIcon /> Search
             </button>
@@ -891,7 +851,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
                 <button
                   type="button"
                   className="collection-view-cancel-edit-button"
-                  onClick={handleDiscardDeleted}
+                  onClick={resetToSearch}
                   disabled={saving}
                 >
                   Discard
@@ -979,7 +939,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
                     onClick={handleLoadLatest}
                     disabled={saving || !liveEditingItem}
                   >
-                    {isAddFormDirty() ? 'Discard mine and load latest' : 'Load latest'}
+                    {isAddFormDirty ?'Discard mine and load latest' : 'Load latest'}
                   </button>
                   {activeConflict && (
                     <button
@@ -1019,7 +979,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
                 <button
                   type="button"
                   className="collection-view-cancel-edit-button"
-                  onClick={handleCancelEdit}
+                  onClick={requestLeaveForm}
                   disabled={saving}
                 >
                   Cancel
@@ -1137,7 +1097,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
         </>
       )}
 
-      {pendingDiscardAction && (
+      {discardConfirmOpen && (
         <ConfirmDialog
           title="Discard changes?"
           message="You have unsaved changes in this item. Discard them?"
