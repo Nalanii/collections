@@ -13,6 +13,7 @@
 import { parseArgs } from 'node:util'
 import { initializeApp } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
+import { chunk } from '../src/utils/chunk.js'
 
 const SUBCOLLECTIONS = ['members', 'invites']
 
@@ -72,9 +73,9 @@ async function main() {
 }
 
 async function deleteAll(db, docRefs) {
-  for (let i = 0; i < docRefs.length; i += 500) {
+  for (const refsChunk of chunk(docRefs)) {
     const batch = db.batch()
-    docRefs.slice(i, i + 500).forEach((ref) => batch.delete(ref))
+    refsChunk.forEach((ref) => batch.delete(ref))
     await batch.commit()
   }
 }

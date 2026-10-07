@@ -17,6 +17,7 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { changedCollectionParts, findCollectionConflicts, sameTimestamp } from '../utils/editConflicts'
+import { chunk, MAX_BATCH_WRITES } from '../utils/chunk'
 import { applyOptionRenames } from '../utils/fieldOptions'
 import { ConflictError } from './conflicts'
 import { db } from './firebase'
@@ -97,9 +98,7 @@ export async function createCollection(user, { name, emoji, fieldDefs }) {
   )
 }
 
-// Firestore caps a batch/transaction at 500 writes; in the atomic path one is
-// the collection doc itself.
-const MAX_BATCH_WRITES = 500
+// In the atomic path one of the batch's writes is the collection doc itself.
 const MAX_RENAMED_ITEMS = MAX_BATCH_WRITES - 1
 
 // The `[FieldPath, newValue]` writes that replay `optionRenames` on one item's
@@ -226,10 +225,9 @@ export async function updateCollection(
   // Refuse up front if the definition already conflicts, before touching any item;
   // the final write checks again in case it changes while the items are written.
   await runTransaction(db, checkForConflict)
-  for (let start = 0; start < renamedItemRefs.length; start += MAX_BATCH_WRITES) {
-    const chunk = renamedItemRefs.slice(start, start + MAX_BATCH_WRITES)
+  for (const refsChunk of chunk(renamedItemRefs)) {
     await runTransaction(db, async (transaction) => {
-      const itemSnaps = await Promise.all(chunk.map((ref) => transaction.get(ref)))
+      const itemSnaps = await Promise.all(refsChunk.map((ref) => transaction.get(ref)))
       itemSnaps.forEach((itemSnap) => renameItemInTransaction(transaction, itemSnap, optionRenames))
     })
   }
@@ -260,9 +258,9 @@ export async function deleteCollection(collectionId) {
     ...memberDocs.filter((snap) => snap.data().role === 'owner').map((snap) => snap.ref),
     collectionRef,
   ]
-  for (let start = 0; start < refs.length; start += MAX_BATCH_WRITES) {
+  for (const refsChunk of chunk(refs)) {
     const batch = writeBatch(db)
-    refs.slice(start, start + MAX_BATCH_WRITES).forEach((ref) => batch.delete(ref))
+    refsChunk.forEach((ref) => batch.delete(ref))
     await batch.commit()
   }
 }

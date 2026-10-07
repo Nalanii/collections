@@ -3,8 +3,6 @@
 
 import { trimFieldValues } from '../src/utils/trimFieldValues.js'
 
-export const MAX_BATCH_SIZE = 500
-
 // RFC 4180 CSV parser: quoted fields, embedded commas/newlines, "" escaped
 // quotes, CRLF or LF row endings. Strips a leading UTF-8 BOM. Returns an
 // array of rows (arrays of strings). A trailing newline does not add a row.
@@ -182,10 +180,4 @@ export function mapRows(rows, fieldDefs, options = {}) {
     unmatchedHeaders,
     invalidStatusRows,
   }
-}
-
-export function chunk(list, size = MAX_BATCH_SIZE) {
-  const chunks = []
-  for (let i = 0; i < list.length; i += size) chunks.push(list.slice(i, i + size))
-  return chunks
 }

@@ -11,7 +11,7 @@
 import { parseArgs } from 'node:util'
 import { initializeApp } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
-import { chunk } from './import-sheet-lib.js'
+import { chunk } from '../src/utils/chunk.js'
 import { computeTrimmedItem } from './trim-item-fields-lib.js'
 
 const USAGE = 'Usage: npm run trim-item-fields -- [--dry-run] [--collection <id>] [--project <id>]'

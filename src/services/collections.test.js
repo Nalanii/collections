@@ -40,6 +40,7 @@ import {
 } from 'firebase/firestore'
 import {
   archiveCollection,
+  deleteCollection,
   restoreCollection,
   subscribeToUserCollections,
   transferOwnership,
@@ -251,6 +252,39 @@ describe('updateCollection conflict handling', () => {
       expect(commits.map((writes) => writes.length)).toEqual([0, 500, 100, 1])
       expect(commits[3][0].path).toBe('collections/col1')
     })
+  })
+})
+
+describe('deleteCollection', () => {
+  it('deletes in batches of at most 500 with the owner member and collection doc last', async () => {
+    const snapshot = (paths, role) => ({
+      docs: paths.map((path) => ({ ref: { path }, data: () => ({ role }) })),
+    })
+    const itemPaths = Array.from({ length: 600 }, (_, i) => `items/i${i}`)
+    getDocsMock
+      .mockResolvedValueOnce(snapshot(itemPaths))
+      .mockResolvedValueOnce(snapshot([]))
+      .mockResolvedValueOnce({
+        docs: [
+          { ref: { path: 'collections/col1/members/owner' }, data: () => ({ role: 'owner' }) },
+          { ref: { path: 'collections/col1/members/ed' }, data: () => ({ role: 'editor' }) },
+        ],
+      })
+    const batches = []
+    writeBatch.mockImplementation(() => {
+      const deleted = []
+      batches.push(deleted)
+      return {
+        delete: vi.fn((ref) => deleted.push(ref.path)),
+        commit: vi.fn(() => Promise.resolve()),
+      }
+    })
+
+    await deleteCollection('col1')
+
+    expect(batches.map((paths) => paths.length)).toEqual([500, 103])
+    expect(batches.flat()).toHaveLength(603)
+    expect(batches.at(-1).slice(-2)).toEqual(['collections/col1/members/owner', 'collections/col1'])
   })
 })
 

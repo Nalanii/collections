@@ -13,7 +13,8 @@ import { parseArgs } from 'node:util'
 import { readFileSync } from 'node:fs'
 import { initializeApp } from 'firebase-admin/app'
 import { FieldValue, getFirestore } from 'firebase-admin/firestore'
-import { chunk, mapRows, parseCsv } from './import-sheet-lib.js'
+import { chunk } from '../src/utils/chunk.js'
+import { mapRows, parseCsv } from './import-sheet-lib.js'
 
 const USAGE =
   'Usage: npm run import-sheet -- <collectionId> <file.csv> --uid <uid> ' +

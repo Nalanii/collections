@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  chunk,
   mapRows,
   matchHeaders,
   normalizeStatus,
@@ -113,9 +112,3 @@ describe('mapRows', () => {
   });
 });
 
-describe('chunk', () => {
-  it('splits into batches of at most 500 by default', () => {
-    const sizes = chunk(Array.from({ length: 1201 }, (_, i) => i)).map((c) => c.length);
-    expect(sizes).toEqual([500, 500, 201]);
-  });
-});

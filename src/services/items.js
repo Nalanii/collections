@@ -15,6 +15,7 @@ import {
 import { db } from './firebase'
 import { ConflictError } from './conflicts'
 import { findItemConflicts, itemChanges, sameTimestamp } from '../utils/editConflicts'
+import { chunk } from '../utils/chunk'
 import { trimFieldValues } from '../utils/trimFieldValues'
 import { clearListenerPending, reportRejectedWrite, setListenerPending } from './syncStatus'
 
@@ -162,8 +163,6 @@ export async function updateItem(itemId, { status, fields, notes, original, forc
   })
 }
 
-const MAX_BATCH_WRITES = 500
-
 // Sets `fields.<fieldName>` to `newValue` on every item in `itemIds`. Uses a dot-path
 // update so other fields are untouched. Returns `{ changed, skipped }`.
 //
@@ -182,10 +181,9 @@ export async function applyFieldValueChange(itemIds, fieldName, newValue, varian
   let skipped = 0
 
   if (!isOffline()) {
-    for (let start = 0; start < itemIds.length; start += MAX_BATCH_WRITES) {
-      const chunk = itemIds.slice(start, start + MAX_BATCH_WRITES)
+    for (const idsChunk of chunk(itemIds)) {
       const outcomes = await Promise.all(
-        chunk.map((itemId) => {
+        idsChunk.map((itemId) => {
           const itemRef = doc(db, 'items', itemId)
           return runTransaction(db, async (transaction) => {
             const snap = await transaction.get(itemRef)
@@ -212,10 +210,9 @@ export async function applyFieldValueChange(itemIds, fieldName, newValue, varian
     return { changed, skipped }
   }
 
-  for (let start = 0; start < itemIds.length; start += MAX_BATCH_WRITES) {
+  for (const idsChunk of chunk(itemIds)) {
     const batch = writeBatch(db)
-    const chunk = itemIds.slice(start, start + MAX_BATCH_WRITES)
-    for (const itemId of chunk) {
+    for (const itemId of idsChunk) {
       // FieldPath (not a "fields.<name>" string) so names containing dots still work.
       batch.update(
         doc(db, 'items', itemId),
@@ -226,7 +223,7 @@ export async function applyFieldValueChange(itemIds, fieldName, newValue, varian
       )
     }
     await settleWrite(batch.commit())
-    changed += chunk.length
+    changed += idsChunk.length
   }
   return { changed, skipped }
 }
