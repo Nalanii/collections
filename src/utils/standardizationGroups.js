@@ -45,40 +45,70 @@ export function wordOrderInsensitiveKey(value) {
   return normalizeForComparison(value).split(' ').sort(compareStrings).join(' ')
 }
 
+const MAX_EDIT_LIMIT = 2 // the largest edit limit isFuzzyClose ever allows
+const HISTOGRAM_BUCKETS = 32 // character-count buckets used to cheaply rule pairs out
+const rowBuffers = [new Int32Array(64), new Int32Array(64), new Int32Array(64)] // reused DP rows
+
 // Optimal string alignment distance (edits, deletions, insertions, adjacent swaps).
-function editDistance(a, b) {
-  const rows = a.length + 1
+// Keeps three rolling rows instead of the full matrix, and gives up (returning a value
+// above `limit`) once two consecutive rows are all over `limit`, since every later cell
+// is built from those rows and can't come back down. Exact whenever the result <= limit.
+function editDistance(a, b, limit) {
   const cols = b.length + 1
-  const d = Array.from({ length: rows }, () => new Array(cols).fill(0))
-  for (let i = 0; i < rows; i++) d[i][0] = i
-  for (let j = 0; j < cols; j++) d[0][j] = j
-  for (let i = 1; i < rows; i++) {
-    for (let j = 1; j < cols; j++) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1
-      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost)
-      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
-        d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1)
-      }
-    }
+  if (rowBuffers[0].length < cols) {
+    for (let k = 0; k < 3; k++) rowBuffers[k] = new Int32Array(cols * 2)
   }
-  return d[a.length][b.length]
+  let [prev2, prev, curr] = rowBuffers
+  for (let j = 0; j < cols; j++) prev[j] = j
+  let prevMin = 0
+  for (let i = 1; i <= a.length; i++) {
+    curr[0] = i
+    let rowMin = i
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1
+      let best = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost)
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+        best = Math.min(best, prev2[j - 2] + 1)
+      }
+      curr[j] = best
+      if (best < rowMin) rowMin = best
+    }
+    if (rowMin > limit && prevMin > limit) return limit + 1
+    prevMin = rowMin
+    ;[prev2, prev, curr] = [prev, curr, prev2]
+  }
+  return prev[b.length]
 }
 
 // Small typos only, and only in long-enough words: "Jane"/"John" Smith and
 // "Anne Rice"/"Anne Ricci" stay apart, "Clique Sumer Collection" joins the real one.
+// Takes keys with their precomputed token arrays.
 function isFuzzyClose(a, b) {
-  if (Math.min(a.length, b.length) < MIN_FUZZY_LENGTH) return false
-  const tokensA = a.split(' ')
-  const tokensB = b.split(' ')
+  const lengthA = a.key.length
+  const lengthB = b.key.length
+  if (Math.min(lengthA, lengthB) < MIN_FUZZY_LENGTH) return false
+  const limit = Math.max(lengthA, lengthB) >= LONG_VALUE_LENGTH ? 2 : 1
+  // Edit distance is never smaller than the length difference.
+  if (Math.abs(lengthA - lengthB) > limit) return false
+  const tokensA = a.tokens
+  const tokensB = b.tokens
   if (tokensA.length !== tokensB.length) return false
-  const differing = tokensA
-    .map((token, i) => [token, tokensB[i]])
-    .filter(([x, y]) => x !== y)
-  if (differing.some(([x, y]) => Math.min(x.length, y.length) < MIN_FUZZY_TOKEN_LENGTH)) {
-    return false
+  for (let i = 0; i < tokensA.length; i++) {
+    if (
+      tokensA[i] !== tokensB[i] &&
+      Math.min(tokensA[i].length, tokensB[i].length) < MIN_FUZZY_TOKEN_LENGTH
+    ) {
+      return false
+    }
   }
-  const limit = Math.max(a.length, b.length) >= LONG_VALUE_LENGTH ? 2 : 1
-  return editDistance(a, b) <= limit
+  // Each edit moves at most two bucket counts by one (a swap moves none), so a larger
+  // L1 gap between the character histograms rules the pair out without the DP.
+  let gap = 0
+  for (let i = 0; i < HISTOGRAM_BUCKETS; i++) {
+    gap += Math.abs(a.histogram[i] - b.histogram[i])
+    if (gap > 2 * limit) return false
+  }
+  return editDistance(a.key, b.key, limit) <= limit
 }
 
 function compareStrings(a, b) {
@@ -136,12 +166,33 @@ export function findStandardizationGroups(items, fieldName) {
     }
     return i
   }
-  for (let i = 0; i < variants.length; i++) {
-    for (let j = i + 1; j < variants.length; j++) {
-      if (find(i) === find(j)) continue
-      if (variants[i].key === variants[j].key || isFuzzyClose(variants[i].key, variants[j].key)) {
-        parent[find(j)] = find(i)
-      }
+  const union = (i, j) => {
+    const rootI = find(i)
+    const rootJ = find(j)
+    if (rootI !== rootJ) parent[rootJ] = rootI
+  }
+
+  // Groups are the connected components of "same key or fuzzy-close", which doesn't
+  // depend on comparison order. Exact-key matches join through a Map first; the fuzzy
+  // pass then compares one representative per distinct key, sorted by key length so the
+  // inner loop can stop once the length gap exceeds the largest edit limit.
+  const byKey = new Map()
+  variants.forEach((variant, i) => {
+    const first = byKey.get(variant.key)
+    if (first === undefined) byKey.set(variant.key, i)
+    else union(first, i)
+  })
+  const distinct = [...byKey].map(([key, index]) => {
+    const histogram = new Uint16Array(HISTOGRAM_BUCKETS)
+    for (let c = 0; c < key.length; c++) histogram[key.charCodeAt(c) % HISTOGRAM_BUCKETS]++
+    return { key, index, tokens: key.split(' '), histogram }
+  })
+  distinct.sort((a, b) => a.key.length - b.key.length)
+  for (let i = 0; i < distinct.length; i++) {
+    for (let j = i + 1; j < distinct.length; j++) {
+      if (distinct[j].key.length - distinct[i].key.length > MAX_EDIT_LIMIT) break
+      if (find(distinct[i].index) === find(distinct[j].index)) continue
+      if (isFuzzyClose(distinct[i], distinct[j])) union(distinct[i].index, distinct[j].index)
     }
   }
 

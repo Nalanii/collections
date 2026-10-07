@@ -112,12 +112,16 @@ export function StandardizeValues({ collectionId, fieldDefs }) {
     ? selectedField
     : (textFields[0]?.name ?? null)
 
-  const groups = useMemo(() => {
+  // The expensive scan depends only on items + field; Skip just filters its cached result.
+  const allGroups = useMemo(() => {
     if (items == null || fieldName == null) return []
-    return findStandardizationGroups(items, fieldName).filter(
-      (group) => !skipped.has(`${fieldName}\u0001${groupKey(group)}`)
-    )
-  }, [items, fieldName, skipped])
+    return findStandardizationGroups(items, fieldName)
+  }, [items, fieldName])
+
+  const groups = useMemo(
+    () => allGroups.filter((group) => !skipped.has(`${fieldName}\u0001${groupKey(group)}`)),
+    [allGroups, fieldName, skipped]
+  )
 
   async function handleApply(group, newValue) {
     const variantValues = new Set(group.variants.map((variant) => variant.value))
