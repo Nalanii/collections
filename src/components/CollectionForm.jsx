@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { normalizeFieldDef } from '../utils/fieldDefs'
 import { detectOptionRenames, moveOption, validateOptions } from '../utils/fieldOptions'
 import { Select } from './Select'
 import './CollectionForm.css'
@@ -36,16 +37,7 @@ function normalizeForDirtyCheck(name, emoji, fieldDefs) {
   return JSON.stringify({
     name: name ?? '',
     emoji: emoji ?? '',
-    fieldDefs: (fieldDefs ?? []).map((fieldDef) => ({
-      name: fieldDef.name ?? '',
-      type: fieldDef.type ?? 'text',
-      options: fieldDef.options ?? [],
-      main: Boolean(fieldDef.main),
-      excludeFromSearch: Boolean(fieldDef.excludeFromSearch),
-      suggestOptions: Boolean(fieldDef.suggestOptions),
-      prefix: fieldDef.prefix ?? '',
-      suffix: fieldDef.suffix ?? '',
-    })),
+    fieldDefs: (fieldDefs ?? []).map(normalizeFieldDef),
   })
 }
 
@@ -275,20 +267,8 @@ export function CollectionForm({
     onSubmit({
       name: trimmedName,
       emoji,
-      // `options` is only persisted for dropdown fields; switching away drops it.
-      // `main`, `excludeFromSearch`, `prefix` and `suffix` are only persisted when set
-      // (prefix/suffix are never trimmed so ' pages' keeps its leading space).
-      // `suggestOptions` is likewise only persisted (as true) for text fields.
-      fieldDefs: validFieldDefs.map(({ name: fieldName, type, options, main, excludeFromSearch, suggestOptions, prefix, suffix }) => ({
-        name: fieldName.trim(),
-        type,
-        ...(type === 'dropdown' && { options: options.map((option) => option.trim()) }),
-        ...(main && { main: true }),
-        ...(excludeFromSearch && { excludeFromSearch: true }),
-        ...(type === 'text' && suggestOptions && { suggestOptions: true }),
-        ...(prefix && { prefix }),
-        ...(suffix && { suffix }),
-      })),
+      // Per-type persistence rules live in normalizeFieldDef (shared with the dirty check).
+      fieldDefs: validFieldDefs.map(normalizeFieldDef),
       // Option text edits to replay on existing items (empty when creating).
       optionRenames: validFieldDefs
         .filter((fieldDef) => fieldDef.type === 'dropdown')
