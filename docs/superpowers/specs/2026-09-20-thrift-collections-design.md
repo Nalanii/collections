@@ -25,11 +25,13 @@ optionally be shared (read-only or read/write) with other people.
 
 ## Non-goals (v1)
 
-- Offline support (stubbed as a future ticket).
-- Non-Google auth (SimpleLogin, stubbed as a future ticket).
-- Ownership transfer for shared collections (stubbed as a future ticket).
-- Archiving collections (stubbed as a future ticket — v1 only supports
-  straight delete).
+- Offline support (deferred from v1; since implemented, see ticket 11).
+- Non-Google auth (SimpleLogin; deferred from v1, since implemented, see
+  ticket 13).
+- Ownership transfer for shared collections (deferred from v1; since
+  implemented, see ticket 12).
+- Archiving collections (deferred from v1, which only supported straight
+  delete; since implemented, see ticket 14).
 - Dedicated "did you mean" UI beyond generous fuzzy filtering.
 - Further custom app icon / branding work beyond the shipped logo and
   palette (v1 uses simple, cute, modern, minimal system styling).
@@ -61,7 +63,15 @@ users/{uid}
   email, displayName, photoURL
 
 collections/{collectionId}
-  name, emoji, ownerId, fieldDefs: [{ name, type: "text" | "number" }], createdAt
+  name, emoji, ownerId, createdAt,
+  fieldDefs: [{ name, type: "text" | "number" | "dropdown",
+                options?: string[],       // dropdown only
+                main?: true,              // primary display field
+                excludeFromSearch?: true,
+                suggestOptions?: true,    // text only
+                prefix?: string, suffix?: string }]
+  // (the v1 snapshot had only name + text/number; flags added later and
+  // only persisted when set. See src/components/CollectionForm.jsx.)
 
 collections/{collectionId}/members/{uid}
   role: "owner" | "editor" | "viewer", joinedAt
@@ -147,14 +157,15 @@ shippable and buildable on the last:
 10. **Read-only enforcement in UI** — hide add mode / edit affordances and
     show the read-only banner for viewer-role members, backed by the security
     rules from ticket 3.
-11. **(Stub, future) Offline support** — Firestore offline persistence and
-    sync so "do I have this" works with no signal.
+11. **Offline support** — Firestore offline persistence and
+    sync so "do I have this" works with no signal (implemented).
 12. **Ownership transfer** — let a collection owner hand off ownership to
     another member (implemented: the old owner becomes an editor).
-13. **(Stub, future) SimpleLogin auth** — add SimpleLogin as a second auth
-    provider alongside Google.
-14. **(Stub, future) Archive collections** — archive instead of (or in
-    addition to) straight delete, with an archived-collections view.
+13. **SimpleLogin auth** — add SimpleLogin as a second auth
+    provider alongside Google (implemented).
+14. **Archive collections** — archive instead of (or in
+    addition to) straight delete, with an archived-collections view
+    (implemented).
 
 ## Open questions for later (not blocking v1)
 

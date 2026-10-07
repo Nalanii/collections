@@ -9,7 +9,7 @@ Four layers protect the data. Project ID below is `collections-tracker-nls`; sub
 | 1. Scheduled Firestore backups | Firestore data | daily | 14 days |
 | 2. Point-in-time recovery (PITR) | Firestore data | continuous | 7 days |
 | 3. Firebase Auth users | Auth users | with each JSON dump (step 4) | 30 days (pruned) |
-| 4. JSON dump to Drive | Firestore data + Auth users, portable | weekly or before risky scripts | 30 days (pruned) |
+| 4. JSON dump to Drive | Firestore data + Auth users, portable | daily (08:00 UTC), plus before risky scripts | 30 days (pruned) |
 
 ## 1. Scheduled Firestore backups
 
@@ -61,7 +61,7 @@ gcloud firestore databases clone --source-database=projects/<project-id>/databas
 
 ## 3. Firebase Auth users
 
-Firestore backups do not include Auth users (Google and SimpleLogin sign-ins). `npm run backup-firestore` (step 4) also writes `auth-users.json` into each dump, via the Admin SDK, so the weekly dump covers Auth and lands in the private Drive folder. Pass `--no-auth` to skip it.
+Firestore backups do not include Auth users (Google and SimpleLogin sign-ins). `npm run backup-firestore` (step 4) also writes `auth-users.json` into each dump, via the Admin SDK, so the daily dump covers Auth and lands in the private Drive folder. Pass `--no-auth` to skip it.
 
 `auth-users.json` contains user identifiers (and password hashes, if any), so keep the Drive folder private and never share it.
 

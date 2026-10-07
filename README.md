@@ -222,9 +222,10 @@ npm run cleanup-phantom-collections -- --apply
 ## Backups
 
 Data is protected in four layers: daily scheduled Firestore backups (kept
-14 days), point-in-time recovery (7 days), and a daily JSON dump of every
-Firestore document plus all Auth users, uploaded to a private Google Drive
-folder (kept 30 days).
+14 days), point-in-time recovery (7 days), an export of all Firebase Auth
+users, and a daily JSON dump of every Firestore document. The Auth export
+is written into each daily dump, and the dump is uploaded to a private
+Google Drive folder (both kept 30 days).
 
 The dump runs from [`.github/workflows/backup.yml`](.github/workflows/backup.yml)
 every day at 08:00 UTC, and on demand from Actions → Backup → Run workflow.
