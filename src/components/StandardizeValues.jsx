@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react'
 import { applyFieldValueChange, subscribeToItems } from '../services/items'
-import { findStandardizationGroups, groupKey } from '../utils/standardizationGroups'
+import { collapseWhitespace, findStandardizationGroups, groupKey } from '../utils/standardizationGroups'
 import { Select } from './Select'
 import './StandardizeValues.css'
 
@@ -125,7 +125,7 @@ export function StandardizeValues({ collectionId, fieldDefs }) {
       .filter((item) => {
         const raw = item.fields?.[fieldName]
         if (raw == null) return false
-        const collapsed = String(raw).replace(/\s+/g, ' ').trim()
+        const collapsed = collapseWhitespace(raw)
         return variantValues.has(collapsed) && String(raw) !== newValue
       })
       .map((item) => item.id)

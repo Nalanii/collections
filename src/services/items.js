@@ -17,6 +17,7 @@ import { ConflictError } from './conflicts'
 import { findItemConflicts, itemChanges, sameTimestamp } from '../utils/editConflicts'
 import { chunk } from '../utils/chunk'
 import { trimFieldValues } from '../utils/trimFieldValues'
+import { collapseWhitespace } from '../utils/standardizationGroups'
 import { clearListenerPending, reportRejectedWrite, setListenerPending } from './syncStatus'
 
 function isOffline() {
@@ -190,7 +191,7 @@ export async function applyFieldValueChange(itemIds, fieldName, newValue, varian
             if (!snap.exists()) return 'skipped'
             const raw = snap.data().fields?.[fieldName]
             if (raw == null) return 'skipped'
-            if (!variants.has(String(raw).replace(/\s+/g, ' ').trim())) return 'skipped'
+            if (!variants.has(collapseWhitespace(raw))) return 'skipped'
             if (raw === value) return 'unchanged'
             // FieldPath (not a "fields.<name>" string) so names containing dots still work.
             transaction.update(

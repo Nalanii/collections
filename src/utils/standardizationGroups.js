@@ -7,9 +7,10 @@ const MIN_FUZZY_TOKEN_LENGTH = 5 // a token that differs must be at least this l
 const LONG_VALUE_LENGTH = 14 // from this length, two edits are tolerated instead of one
 
 // Trims and collapses internal whitespace runs, so whitespace-only differences are the
-// same variant.
-function collapseWhitespace(value) {
-  return value.replace(/\s+/g, ' ').trim()
+// same variant. Shared by grouping, the preview and applyFieldValueChange so the three
+// can't drift (a mismatch would make Apply skip every item as "changed since loading").
+export function collapseWhitespace(value) {
+  return String(value).replace(/\s+/g, ' ').trim()
 }
 
 // Comparison key: lowercase; apostrophes, periods and commas removed; other punctuation
