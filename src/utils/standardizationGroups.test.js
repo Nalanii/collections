@@ -271,7 +271,8 @@ describe('findStandardizationGroups matches the pre-optimization implementation'
     const expected = legacyFindStandardizationGroups(fixture, 'Title')
     expect(expected.length).toBeGreaterThan(50) // the fixture really contains near-duplicates
     expect(findStandardizationGroups(fixture, 'Title')).toEqual(expected)
-  })
+    // The legacy reference is quadratic and takes ~10s on a fast machine, so allow far more on CI.
+  }, 120_000)
 
   it('returns identical groups on an author-like fixture', () => {
     const fixture = makeFixture(81, 700, authorBase)
