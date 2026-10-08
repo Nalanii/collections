@@ -150,6 +150,17 @@ process behind. Kill it and re-run:
   process via Task Manager)
 - macOS/Linux: `lsof -ti:8080 | xargs kill`
 
+On Windows this happens on every run if `java` resolves to Oracle's
+launcher stub (`C:\Program Files\Common Files\Oracle\Java\javapath\java.exe`),
+which is what the Oracle installer puts on PATH. The stub starts the real
+JDK `java.exe` as a separate process, and when the Firebase CLI shuts the
+emulator down it only kills the stub. The real emulator keeps running,
+holding port 8080 and leaving its console window or terminal tab open. Check
+with `(Get-Command java).Source`. To fix it, add the JDK's own `bin` folder
+(e.g. `C:\Program Files\Java\jdk-26.0.2.1\bin`) to the **system** `Path`
+above the `javapath` entry, then restart your terminal. Update that entry
+when you upgrade Java, since the folder name includes the version.
+
 ## Admin scripts
 
 These Node scripts write with the Firebase Admin SDK. Each one targets the
