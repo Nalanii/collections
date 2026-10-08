@@ -8,7 +8,7 @@ export const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file'
 const API = 'https://www.googleapis.com/drive/v3'
 const UPLOAD = 'https://www.googleapis.com/upload/drive/v3'
 
-async function check(res, what) {
+export async function check(res, what) {
   if (res.ok) return res
   throw new Error(`Drive ${what} failed: ${res.status} ${await res.text()}`)
 }
