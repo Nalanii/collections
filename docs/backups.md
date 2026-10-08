@@ -101,6 +101,7 @@ Service accounts have no storage quota on a personal Drive, so uploads use OAuth
 5. Put the four values in a git-ignored `.env.backup` (or your scheduler's secret store): `DRIVE_CLIENT_ID`, `DRIVE_CLIENT_SECRET`, `DRIVE_REFRESH_TOKEN`, `DRIVE_FOLDER_ID`. Load it before running, e.g. `node --env-file=.env.backup scripts/backup-firestore.js`.
 
 - `--out` defaults to `backups/` (git-ignored). `--no-drive` skips the upload.
+- `--quiet` omits the per-collection user/document counts from the output (they stay in `manifest.json`). The Backup workflow uses it so the public Actions log doesn't show them.
 - `--keep-days` (default 30, `0` disables) prunes older `firestore-<timestamp>` directories in `--out`, and moves older dump folders in the Drive backup folder to the Drive trash. Nothing else is touched.
 - Targets production using Admin credentials (`GOOGLE_APPLICATION_CREDENTIALS`), or the emulator if `FIRESTORE_EMULATOR_HOST` is set.
 - Timestamps are written as `{"__type":"timestamp","value":"<ISO>"}`; references, geopoints and bytes are tagged the same way.

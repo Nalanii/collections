@@ -7,7 +7,11 @@
 // format.
 //
 // Usage:
-//   npm run backup-firestore -- [--out <dir>] [--keep-days <n>] [--project <id>] [--no-drive] [--no-auth]
+//   npm run backup-firestore -- [--out <dir>] [--keep-days <n>] [--project <id>] [--no-drive] [--no-auth] [--quiet]
+//
+// --quiet omits the per-collection user/document counts from stdout (they are
+// still in the dump's manifest.json). The Backup workflow passes it because
+// Actions logs in a public repo are world-readable (issue #96).
 //
 // If DRIVE_CLIENT_ID, DRIVE_CLIENT_SECRET, DRIVE_REFRESH_TOKEN and
 // DRIVE_FOLDER_ID are all set (see scripts/backup-drive-auth.js and
@@ -102,8 +106,10 @@ async function main() {
       project: { type: 'string' },
       'no-drive': { type: 'boolean', default: false },
       'no-auth': { type: 'boolean', default: false },
+      quiet: { type: 'boolean', default: false },
     },
   })
+  const logCount = values.quiet ? () => {} : console.log
   const keepDays = Number(values['keep-days'])
   if (!Number.isFinite(keepDays) || keepDays < 0) throw new Error('--keep-days must be a number >= 0')
 
@@ -133,13 +139,13 @@ async function main() {
     } while (pageToken)
     await writeFile(path.join(dumpDir, 'auth-users.json'), JSON.stringify({ users }, null, 2))
     summary.push({ collection: 'auth-users', documents: users.length })
-    console.log(`  auth-users: ${users.length} user(s)`)
+    logCount(`  auth-users: ${users.length} user(s)`)
   }
   for (const col of await db.listCollections()) {
     const { docs, count } = await dumpCollection(col)
     await writeFile(path.join(dumpDir, `${col.id}.json`), JSON.stringify({ collection: col.id, docs }, null, 2))
     summary.push({ collection: col.id, documents: count })
-    console.log(`  ${col.id}: ${count} document(s)`)
+    logCount(`  ${col.id}: ${count} document(s)`)
   }
   await writeFile(
     path.join(dumpDir, 'manifest.json'),
