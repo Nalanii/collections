@@ -1,6 +1,11 @@
 // Pure logic for scripts/import-sheet.js. No Firestore or file I/O in here so
 // it can be unit tested directly (tests/import-sheet.test.js).
 
+import {
+  DEFAULT_ITEM_STATUS,
+  isKnownStatus,
+  normalizeStatus as normalizeItemStatus,
+} from '../src/utils/itemStatus.js'
 import { trimFieldValues } from '../src/utils/trimFieldValues.js'
 
 // RFC 4180 CSV parser: quoted fields, embedded commas/newlines, "" escaped
@@ -66,10 +71,8 @@ export function cellToString(value) {
 // anything other than have/iso (case-insensitive) falls back to 'have' with
 // recognised=false so the caller can warn about it.
 export function normalizeStatus(value) {
-  const text = cellToString(value).toLowerCase()
-  if (text === '') return { status: 'have', recognised: true }
-  if (text === 'have' || text === 'iso') return { status: text, recognised: true }
-  return { status: 'have', recognised: false }
+  if (cellToString(value) === '') return { status: DEFAULT_ITEM_STATUS, recognised: true }
+  return { status: normalizeItemStatus(value), recognised: isKnownStatus(value) }
 }
 
 // Maps each header column to a target. Matching is case-insensitive and

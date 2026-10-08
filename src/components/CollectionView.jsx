@@ -9,6 +9,7 @@ import { mainFieldNames, sortItems } from '../utils/sortItems'
 import { buildSelectOptions } from '../utils/fieldOptions'
 import { trimFieldValues } from '../utils/trimFieldValues'
 import { findDuplicateItem } from '../utils/duplicateItem'
+import { DEFAULT_ITEM_STATUS, ITEM_STATUSES, normalizeStatus, statusLabel } from '../utils/itemStatus'
 import { canWrite, getMemberRole, isViewerRole } from '../utils/permissions'
 import { BackButton } from './BackButton'
 import { ConfirmDialog } from './ConfirmDialog'
@@ -181,7 +182,7 @@ function saveSortField(collectionId, fieldName) {
 }
 
 function emptyFormState() {
-  return { fields: {}, original: null, status: 'have', notes: '' }
+  return { fields: {}, original: null, status: DEFAULT_ITEM_STATUS, notes: '' }
 }
 
 // Edit-form state for `item`. `original` is the item as the form was opened with it;
@@ -200,7 +201,7 @@ function editFormState(item, fieldDefs) {
       fields: item.fields ?? {},
       updatedAt: item.updatedAt ?? null,
     },
-    status: item.status,
+    status: normalizeStatus(item.status),
     notes: item.notes ?? '',
   }
 }
@@ -208,10 +209,6 @@ function editFormState(item, fieldDefs) {
 function displayValue(value) {
   const text = String(value ?? '').trim()
   return text === '' ? '(empty)' : text
-}
-
-function statusLabel(status) {
-  return status === 'iso' ? 'ISO' : 'Have'
 }
 
 export function CollectionView({ collectionId, user, onBack, onManage = () => {} }) {
@@ -381,8 +378,10 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
     if (activeTab === 'all') {
       return items
     }
-    return items.filter((item) => item.status === activeTab)
+    return items.filter((item) => normalizeStatus(item.status) === activeTab)
   }, [items, activeTab])
+
+  const activeStatus = ITEM_STATUSES.find((status) => status.value === activeTab)
 
   // Sorted after the search so results stay in the chosen order rather than by match relevance.
   const displayedItems = useMemo(
@@ -698,24 +697,18 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
             >
               All
             </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === 'have'}
-              className={`collection-view-tab collection-view-tab--have${activeTab === 'have' ?' collection-view-tab--active' : ''}`}
-              onClick={() => setActiveTab('have')}
-            >
-              Have
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === 'iso'}
-              className={`collection-view-tab collection-view-tab--iso${activeTab === 'iso' ?' collection-view-tab--active' : ''}`}
-              onClick={() => setActiveTab('iso')}
-            >
-              ISO
-            </button>
+            {ITEM_STATUSES.map((status) => (
+              <button
+                key={status.value}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === status.value}
+                className={`collection-view-tab collection-view-tab--${status.value}${activeTab === status.value ? ' collection-view-tab--active' : ''}`}
+                onClick={() => setActiveTab(status.value)}
+              >
+                {status.label}
+              </button>
+            ))}
           </div>
         </div>
         {mainFieldOptions.length >= 2 && (
@@ -791,27 +784,22 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
           <div className="collection-view-add-field">
             <span className="collection-view-add-label">Status</span>
             <div className="collection-view-status-radio" role="radiogroup" aria-label="Have or ISO">
-              <label className="collection-view-status-option collection-view-status-option--have">
-                <input
-                  type="radio"
-                  name="item-status"
-                  value="have"
-                  checked={form.status === 'have'}
-                  onChange={() => setForm((prev) => ({ ...prev, status: 'have' }))}
-                  ref={fieldDefs.length === 0 ? firstFieldRef : undefined}
-                />
-                Have
-              </label>
-              <label className="collection-view-status-option collection-view-status-option--iso">
-                <input
-                  type="radio"
-                  name="item-status"
-                  value="iso"
-                  checked={form.status === 'iso'}
-                  onChange={() => setForm((prev) => ({ ...prev, status: 'iso' }))}
-                />
-                ISO
-              </label>
+              {ITEM_STATUSES.map((status, index) => (
+                <label
+                  key={status.value}
+                  className={`collection-view-status-option collection-view-status-option--${status.value}`}
+                >
+                  <input
+                    type="radio"
+                    name="item-status"
+                    value={status.value}
+                    checked={form.status === status.value}
+                    onChange={() => setForm((prev) => ({ ...prev, status: status.value }))}
+                    ref={index === 0 && fieldDefs.length === 0 ? firstFieldRef : undefined}
+                  />
+                  {status.label}
+                </label>
+              ))}
             </div>
           </div>
 
@@ -1010,9 +998,7 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
 
           {items !== null && !itemsError && tabItems.length === 0 && (
             <p className="collection-view-empty">
-              {activeTab === 'iso' && 'No ISO items yet.'}
-              {activeTab === 'have' && 'No Have items yet.'}
-              {activeTab === 'all' && 'No items yet.'}
+              {activeStatus ? `No ${activeStatus.label} items yet.` : 'No items yet.'}
             </p>
           )}
 
@@ -1030,12 +1016,12 @@ export function CollectionView({ collectionId, user, onBack, onManage = () => {}
                 return (
                   <li
                     key={item.id}
-                    className={`collection-view-item-row collection-view-item-row--${item.status}`}
+                    className={`collection-view-item-row collection-view-item-row--${normalizeStatus(item.status)}`}
                   >
                     <div className="collection-view-item-row-main">
                       <span className="collection-view-item-row-fields">{fieldsSummary}</span>
                       <span className="collection-view-item-row-status">
-                        {item.status === 'have' ? 'Have' : 'ISO'}
+                        {statusLabel(item.status)}
                       </span>
                     </div>
                     {secondaryFields.length > 0 && (
