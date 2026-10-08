@@ -38,10 +38,11 @@
     "vite": "^8.3.0",
     "vitest": "^5.0.1"
   },
-  "//": "The @grpc/grpc-js override forces @firebase/firestore's copy (which declares ~1.9.0) past 1.9.16 to clear GHSA-m9gg-hp2v-232j / GHSA-f596-whhp-79r4 (see issue #117); remove it once a @firebase/firestore release moves past ~1.9.0.",
+  "//": "The @grpc/grpc-js override forces @firebase/firestore's copy (which declares ~1.9.0) past 1.9.16 to clear GHSA-m9gg-hp2v-232j / GHSA-f596-whhp-79r4 (see issue #117); remove it once a @firebase/firestore release moves past ~1.9.0. The basic-ftp override forces get-uri's copy (which declares ^5.3.1) to 6.2.2+ to clear GHSA-c475-qrg2-pj4r (see issue #118); remove it once a get-uri release accepts basic-ftp 6.x.",
   "overrides": {
     "@grpc/grpc-js": "^1.14.5",
     "@opentelemetry/core": "^2.8.0",
+    "basic-ftp": "^6.2.2",
     "uuid": "^11.1.1"
   }
 }
