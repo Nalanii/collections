@@ -50,27 +50,62 @@ export function serialize(value) {
   return value
 }
 
-// listDocuments() includes phantom parents (no fields, only subcollections),
-// so nothing reachable is skipped. Returns { docs, count } for one collection.
-async function dumpCollection(colRef) {
-  const docs = []
-  let count = 0
-  for (const ref of await colRef.listDocuments()) {
-    const snap = await ref.get()
-    const subcollections = {}
-    for (const sub of await ref.listCollections()) {
-      const dumped = await dumpCollection(sub)
-      subcollections[sub.id] = dumped.docs
-      count += dumped.count
-    }
-    if (snap.exists) count += 1
-    docs.push({
-      id: ref.id,
-      exists: snap.exists,
-      data: snap.exists ? serialize(snap.data()) : null,
-      subcollections,
-    })
+const GET_ALL_CHUNK = 300 // refs per getAll() call
+const MAX_IN_FLIGHT = 16 // Firestore RPCs in flight across the whole walk (issue #99)
+
+// Tiny FIFO semaphore: limit(fn) runs fn once a slot is free. Wrap only single
+// RPCs, never a child dump, or nested recursion would deadlock waiting on slots.
+// A released slot is handed straight to the next waiter (active is not
+// decremented), so a fresh caller can't barge in and exceed max.
+export function createLimiter(max) {
+  let active = 0
+  const waiting = []
+  const release = () => {
+    const next = waiting.shift()
+    if (next) next()
+    else active -= 1
   }
+  return async (fn) => {
+    if (active >= max) await new Promise((resolve) => waiting.push(resolve))
+    else active += 1
+    try {
+      return await fn()
+    } finally {
+      release()
+    }
+  }
+}
+
+// listDocuments() includes phantom parents (no fields, only subcollections),
+// so nothing reachable is skipped. Snapshots are read in bulk with getAll()
+// and subcollections are walked concurrently, both under one shared limiter.
+// Output order matches listDocuments()/listCollections(). Returns { docs, count }.
+export async function dumpCollection(colRef, limit = createLimiter(MAX_IN_FLIGHT)) {
+  const refs = await limit(() => colRef.listDocuments())
+  const chunks = []
+  for (let i = 0; i < refs.length; i += GET_ALL_CHUNK) chunks.push(refs.slice(i, i + GET_ALL_CHUNK))
+  const snaps = (await Promise.all(chunks.map((chunk) => limit(() => colRef.firestore.getAll(...chunk))))).flat()
+
+  let count = 0
+  const docs = await Promise.all(
+    refs.map(async (ref, i) => {
+      const snap = snaps[i]
+      const subs = await limit(() => ref.listCollections())
+      const dumped = await Promise.all(subs.map((sub) => dumpCollection(sub, limit)))
+      const subcollections = {}
+      subs.forEach((sub, j) => {
+        subcollections[sub.id] = dumped[j].docs
+        count += dumped[j].count
+      })
+      if (snap.exists) count += 1
+      return {
+        id: ref.id,
+        exists: snap.exists,
+        data: snap.exists ? serialize(snap.data()) : null,
+        subcollections,
+      }
+    }),
+  )
   return { docs, count }
 }
 
