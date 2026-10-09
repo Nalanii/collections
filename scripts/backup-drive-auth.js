@@ -80,10 +80,23 @@ const code = await new Promise((resolve, reject) => {
     }
     res.end(error ? 'Authorization failed. You can close this tab.' : 'Authorized. You can close this tab.')
     server.close()
-    if (error) reject(new Error(error))
+    if (error) reject(new Error(`Authorization was not granted: ${error}`))
     else resolve(c)
   })
+  server.on('error', (err) => {
+    reject(
+      new Error(
+        err.code === 'EADDRINUSE'
+          ? `Port ${PORT} is already in use. Is another backup-drive-auth still running?`
+          : String(err.code ?? err.name),
+      ),
+    )
+  })
   server.listen(PORT, '127.0.0.1')
+}).catch((err) => {
+  // Our own one-liners, or the OAuth error code from a state-verified callback; never the error object or stack.
+  console.error(err.message)
+  process.exit(1)
 })
 
 const tokenRes = await check(
