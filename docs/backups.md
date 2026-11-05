@@ -9,7 +9,7 @@ Four layers protect the data. Project ID below is `collections-tracker-nls`; sub
 | 1. Scheduled Firestore backups | Firestore data | daily | 14 days |
 | 2. Point-in-time recovery (PITR) | Firestore data | continuous | 7 days |
 | 3. Firebase Auth users | Auth users | with each JSON dump (step 4) | 30 days (pruned) |
-| 4. JSON dump to Drive | Firestore data + Auth users, portable | daily (08:00 UTC), plus before risky scripts | 30 days (pruned) |
+| 4. JSON dump on a home NAS | Firestore data + Auth users, portable | daily (01:40 America/New_York), plus before risky scripts | 30 days (pruned) |
 
 ## 1. Scheduled Firestore backups
 
@@ -61,9 +61,9 @@ gcloud firestore databases clone --source-database=projects/<project-id>/databas
 
 ## 3. Firebase Auth users
 
-Firestore backups do not include Auth users (Google and SimpleLogin sign-ins). `npm run backup-firestore` (step 4) also writes `auth-users.json` into each dump, via the Admin SDK, so the daily dump covers Auth and lands in the private Drive folder. Pass `--no-auth` to skip it.
+Firestore backups do not include Auth users (Google and SimpleLogin sign-ins). `npm run backup-firestore` (step 4) also writes `auth-users.json` into each dump, via the Admin SDK, so the daily dump covers Auth and lands on the home NAS. Pass `--no-auth` to skip it.
 
-`auth-users.json` contains user identifiers (and password hashes, if any), so keep the Drive folder private and never share it.
+`auth-users.json` contains user identifiers (and password hashes, if any), so keep the dumps private and never share them.
 
 Manual alternative (same data, Firebase CLI format):
 
@@ -84,7 +84,9 @@ npm run backup-firestore
 
 It writes to `backups/` (or `--out`), then uploads the dated folder to Google Drive when the Drive env vars are set.
 
-### One-time Drive setup
+### Optional: Google Drive upload
+
+The scheduled dump doesn't use this any more (it runs with `--no-drive` on a home NAS; the Drive upload was retired 2026-11-05). The script still supports it for manual runs.
 
 Service accounts have no storage quota on a personal Drive, so uploads use OAuth as you with the narrow `drive.file` scope (the script can only see files it created).
 
@@ -101,7 +103,7 @@ Service accounts have no storage quota on a personal Drive, so uploads use OAuth
 5. Put the four values in a git-ignored `.env.backup` (or your scheduler's secret store): `DRIVE_CLIENT_ID`, `DRIVE_CLIENT_SECRET`, `DRIVE_REFRESH_TOKEN`, `DRIVE_FOLDER_ID`. Load it before running, e.g. `node --env-file=.env.backup scripts/backup-firestore.js`.
 
 - `--out` defaults to `backups/` (git-ignored). `--no-drive` skips the upload.
-- `--quiet` omits the per-collection user/document counts from the output (they stay in `manifest.json`). The Backup workflow uses it so the public Actions log doesn't show them.
+- `--quiet` omits the per-collection user/document counts from the output (they stay in `manifest.json`). Use it anywhere the output is logged somewhere public.
 - `--keep-days` (default 30, `0` disables) prunes older `firestore-<timestamp>` directories in `--out`, and moves older dump folders in the Drive backup folder to the Drive trash. Nothing else is touched.
 - Targets production using Admin credentials (`GOOGLE_APPLICATION_CREDENTIALS`), or the emulator if `FIRESTORE_EMULATOR_HOST` is set.
 - Timestamps are written as `{"__type":"timestamp","value":"<ISO>"}`; references, geopoints and bytes are tagged the same way.
@@ -114,24 +116,28 @@ There is no automated restore script: the dump is a last-resort, vendor-neutral 
 
 Before relying on the setup, restore the latest backup into a scratch database (step 1, `restore-test`), then confirm `collections`, their `members`/`invites`, and `items` are present and counts match `manifest.json` from a fresh dump. Delete the scratch database afterwards.
 
-## Automating the dump (GitHub Actions)
+## Automating the dump (home NAS)
 
-`.github/workflows/backup.yml` runs the dump daily at 08:00 UTC (and on demand via Actions → Backup → Run workflow). It needs these repo secrets:
+The daily dump runs on a home NAS (a DSM Task Scheduler job, daily at 01:40 America/New_York), not in GitHub Actions. The old `.github/workflows/backup.yml` → Google Drive job and its repo secrets were retired 2026-11-05. Setup notes live in a private repo, outside this one.
 
-- `DRIVE_CLIENT_ID`, `DRIVE_CLIENT_SECRET`, `DRIVE_REFRESH_TOKEN`, `DRIVE_FOLDER_ID` (from the Drive setup above)
-- `BACKUP_SERVICE_ACCOUNT`: the JSON key of a read-only service account
+Each run starts a throwaway `node:24-alpine` container, downloads `scripts/backup-firestore.js` and `scripts/backup-drive-lib.js` from `main`, and runs:
 
-Create the service account (PowerShell):
+```bash
+node scripts/backup-firestore.js --project collections-tracker-nls --out <nas folder> --keep-days 30 --no-drive
+```
+
+**Changes to those two scripts on `main` go live on the next nightly run**, so keep them working and keep their flags (`--project`, `--out`, `--keep-days`, `--no-drive`) backward compatible. A `firestore-<timestamp>` folder without `manifest.json` is an incomplete dump (the manifest is written last). Failures alert through healthchecks.io.
+
+It authenticates with a read-only service account. To create one (PowerShell):
 
 ```powershell
 gcloud iam service-accounts create firestore-backup --display-name="Firestore backup (read-only)" --project=<project-id>
 gcloud projects add-iam-policy-binding <project-id> --member="serviceAccount:firestore-backup@<project-id>.iam.gserviceaccount.com" --role="roles/datastore.viewer"
 gcloud projects add-iam-policy-binding <project-id> --member="serviceAccount:firestore-backup@<project-id>.iam.gserviceaccount.com" --role="roles/firebaseauth.viewer"
 gcloud iam service-accounts keys create backup-sa-key.json --iam-account="firestore-backup@<project-id>.iam.gserviceaccount.com"
-Get-Content -Raw backup-sa-key.json | gh secret set BACKUP_SERVICE_ACCOUNT
 ```
 
-Then delete `backup-sa-key.json` from disk. The repo is public, so the workflow never uploads the dump as an artifact and never prints document contents. GitHub disables scheduled workflows in a public repo after 60 days without repo activity; re-enable from the Actions tab if that happens. A failed run emails you (Actions notifications).
+Copy `backup-sa-key.json` to the NAS (never into this repo; the repo is public), then delete it from your PC.
 
 ## Never commit
 

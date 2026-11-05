@@ -235,19 +235,19 @@ npm run cleanup-phantom-collections -- --apply
 Data is protected in four layers: daily scheduled Firestore backups (kept
 14 days), point-in-time recovery (7 days), an export of all Firebase Auth
 users, and a daily JSON dump of every Firestore document. The Auth export
-is written into each daily dump, and the dump is uploaded to a private
-Google Drive folder (both kept 30 days).
+is written into each daily dump, and the dump is saved on a home NAS
+(kept 30 days).
 
-The dump runs from [`.github/workflows/backup.yml`](.github/workflows/backup.yml)
-every day at 08:00 UTC, and on demand from Actions → Backup → Run workflow.
-To run it by hand:
+The dump runs on the home NAS every day at 01:40 America/New_York and
+downloads `scripts/backup-firestore.js` from `main` on each run, so changes
+to that script go live the next night. To run it by hand:
 
 ```bash
 npm run backup-firestore
 ```
 
-Setup, the Drive OAuth helper (`npm run backup-drive-auth`), required
-secrets and restore steps are in [docs/backups.md](docs/backups.md).
+Setup, the optional Drive upload (`npm run backup-drive-auth`), and
+restore steps are in [docs/backups.md](docs/backups.md).
 
 ## Deployments
 
@@ -296,8 +296,8 @@ The deploy job needs these GitHub Actions secrets:
      ```
   3. Delete the downloaded JSON file locally once it's set.
 
-The backup workflow's secrets are listed in
-[docs/backups.md](docs/backups.md#automating-the-dump-github-actions).
+The daily backup runs on a home NAS, not in GitHub Actions; see
+[docs/backups.md](docs/backups.md#automating-the-dump-home-nas).
 
 ## Scripts
 
